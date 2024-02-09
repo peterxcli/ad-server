@@ -1,10 +1,11 @@
 package line_utils
 
 import (
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/model"
 	"encoding/json"
-	"github.com/line/line-bot-sdk-go/linebot"
 	"log"
+
+	"github.com/line/line-bot-sdk-go/linebot"
 )
 
 func CreateFlexMessage(event *model.EventDetails) (*linebot.FlexContainer, error) {

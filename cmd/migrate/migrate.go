@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/model"
 	"log"
 )
 

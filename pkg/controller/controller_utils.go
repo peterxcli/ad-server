@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/model"
 	"strconv"
 
 	"github.com/gin-gonic/gin"

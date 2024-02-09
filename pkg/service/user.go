@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	tokensvc "bikefest/internal/token"
-	"bikefest/pkg/model"
+	tokensvc "dcard-backend-2024/internal/token"
+	"dcard-backend-2024/pkg/model"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"

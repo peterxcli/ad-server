@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/model"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -143,7 +143,7 @@ func (ctrl *EventController) UpdateEvent(c *gin.Context) {
 // @Produce json
 // @Router /events/test-store-all [get]
 func (ctrl *EventController) StoreAllEvent(c *gin.Context) {
-	jsonURL := "https://raw.githubusercontent.com/gdsc-ncku/BikeFestival17th-Frontend/main/src/data/event.json"
+	jsonURL := "https://raw.githubusercontent.com/gdsc-ncku/dcard-backend-2024ival17th-Frontend/main/src/data/event.json"
 	var eventDetails []model.EventDetails
 	var events []*model.Event
 

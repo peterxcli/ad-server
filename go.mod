@@ -1,4 +1,4 @@
-module bikefest
+module dcard-backend-2024
 
 go 1.21.0
 

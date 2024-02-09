@@ -1,15 +1,16 @@
 package worker
 
 import (
-	"bikefest/pkg/line_utils"
-	"bikefest/pkg/model"
 	"context"
+	"dcard-backend-2024/pkg/line_utils"
+	"dcard-backend-2024/pkg/model"
 	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/hibiken/asynq"
 	"github.com/line/line-bot-sdk-go/linebot"
 	"github.com/redis/go-redis/v9"
-	"log"
 )
 
 const (

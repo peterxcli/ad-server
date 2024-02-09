@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/router"
-	"bikefest/pkg/service"
-	"bikefest/pkg/worker"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/router"
+	"dcard-backend-2024/pkg/service"
+	"dcard-backend-2024/pkg/worker"
+	"log"
+
 	"github.com/hibiken/asynq"
 	"github.com/line/line-bot-sdk-go/linebot"
-	"log"
 )
 
 func main() {

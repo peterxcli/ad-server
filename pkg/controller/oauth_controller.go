@@ -1,9 +1,9 @@
 package controller
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/line_utils"
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/line_utils"
+	"dcard-backend-2024/pkg/model"
 	"fmt"
 	"log"
 	"net/http"

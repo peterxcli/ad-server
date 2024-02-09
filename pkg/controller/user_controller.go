@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/model"
-	"bikefest/pkg/service"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/model"
+	"dcard-backend-2024/pkg/service"
 
 	"github.com/gin-gonic/gin"
 )

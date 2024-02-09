@@ -1,15 +1,16 @@
 package main
 
 import (
-	"bikefest/docs"
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/router"
-	"bikefest/pkg/service"
+	"dcard-backend-2024/docs"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/router"
+	"dcard-backend-2024/pkg/service"
 	"fmt"
-	"github.com/hibiken/asynq"
-	"github.com/hibiken/asynqmon"
 	"net/http"
 	"net/http/httputil"
+
+	"github.com/hibiken/asynq"
+	"github.com/hibiken/asynqmon"
 
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"

@@ -1,10 +1,10 @@
 package router
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/controller"
-	"bikefest/pkg/middleware"
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/controller"
+	"dcard-backend-2024/pkg/middleware"
+	"dcard-backend-2024/pkg/model"
 )
 
 type Services struct {

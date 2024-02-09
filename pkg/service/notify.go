@@ -1,9 +1,9 @@
 package service
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/model"
 	"context"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/model"
 	"encoding/json"
 	"errors"
 	"log"

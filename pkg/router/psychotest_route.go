@@ -1,8 +1,8 @@
 package router
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/controller"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/controller"
 )
 
 func RegisterPsychoTestRouter(app *bootstrap.Application, controller *controller.PsychoTestController) {

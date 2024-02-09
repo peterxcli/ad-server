@@ -1,9 +1,9 @@
 package router
 
 import (
-	"bikefest/pkg/bootstrap"
-	"bikefest/pkg/controller"
-	"bikefest/pkg/middleware"
+	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/controller"
+	"dcard-backend-2024/pkg/middleware"
 )
 
 func RegisterUserRoutes(app *bootstrap.Application, controller *controller.UserController) {

@@ -1,7 +1,7 @@
 package tokensvc
 
 import (
-	"bikefest/pkg/model"
+	"dcard-backend-2024/pkg/model"
 	"fmt"
 	"time"
 

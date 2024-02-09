@@ -1,11 +1,12 @@
 package service
 
 import (
-	"bikefest/pkg/model"
 	"context"
+	"dcard-backend-2024/pkg/model"
+	"time"
+
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
-	"time"
 )
 
 type EventServiceImpl struct {
