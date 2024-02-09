@@ -1,0 +1,28 @@
+version: "3.7"
+
+services:
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_DATABASE: ${APP_DB_DATABASE}
+      POSTGRES_USER: ${APP_DB_USERNAME}
+      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    networks:
+      - bike-networks
+
+  redis:
+    image: redis:latest
+    restart: always
+    environment:
+      TZ: ${APP_SERVER_TIMEZONE}
+    ports:
+      - ${APP_REDIS_PORT}:6379
+    networks:
+      - bike-networks
+
+networks:
+  bike-networks:
+    driver: bridge

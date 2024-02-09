@@ -1,0 +1,14 @@
+http-server:
+  hostname: 0.0.0.0
+  port: 9000
+
+database:
+  host: bike-db
+  port: 5432
+  user: test_user
+  password: test_password
+  dbname: postgres
+
+secret:
+  access_secret: 1234567890
+  refresh_secret: 6969669696

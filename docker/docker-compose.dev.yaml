@@ -1,0 +1,59 @@
+version: "3.7"
+
+services:
+  # app:
+  #   build:
+  #     context: ../
+  #     dockerfile: Dockerfile
+  #   image: bike-app
+  #   container_name: bike-app
+  #   restart: unless-stopped
+  #   ports:
+  #     - '9000:5000'
+  #   volumes:
+  #     - ../app:/code
+  #   networks:
+  #     - bike-networks
+  #   depends_on:
+  #     - db
+
+#  db:
+#    image: postgres:latest
+#    container_name: bike-db
+#    restart: always
+#    environment:
+#      POSTGRES_DATABASE: ${APP_DB_DATABASE}
+#      POSTGRES_USER: ${APP_DB_USERNAME}
+#      POSTGRES_PASSWORD: ${APP_DB_PASSWORD}
+#    ports:
+#      - "5432:5432"
+#    networks:
+#      - bike-networks
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: bike-pgadmin
+    restart: unless-stopped
+    ports:
+      - '8085:80'
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${APP_PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${APP_PGADMIN_PASSWORD}
+    networks:
+      - bike-networks
+
+#  redis:
+#    image: redis:latest
+#    restart: always
+#    environment:
+#      TZ: ${APP_SERVER_TIMEZONE}
+#    expose:
+#      - ${APP_REDIS_PORT}
+
+networks:
+  bike-networks:
+    driver: bridge
+
+#volumes:
+#  bike-pgadmin:
+#    name: bike-pgadmin

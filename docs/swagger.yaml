@@ -1,0 +1,596 @@
+definitions:
+  bikefest_pkg_model.CreateEventRequest:
+    properties:
+      event_detail:
+        example: '{"title":"test event","description":"test event description"}'
+        type: string
+      event_time_end:
+        example: 2021/01/01 00:00
+        type: string
+      event_time_start:
+        example: 2021/01/01 00:00
+        type: string
+      id:
+        type: string
+    type: object
+  bikefest_pkg_model.CreateFakeUserRequest:
+    properties:
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  bikefest_pkg_model.Event:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      event_detail:
+        description: the `EventDetail` field store the event detail in json format,
+          this would be parsed when send to line message API
+        type: string
+      event_time_end:
+        type: string
+      event_time_start:
+        type: string
+      id:
+        description: the event id is defne at the frontend, if frontend don't have
+          event id, the event id would be calculated by the hash of event detail and
+          event time
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  bikefest_pkg_model.EventListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/bikefest_pkg_model.Event'
+        type: array
+      msg:
+        type: string
+    type: object
+  bikefest_pkg_model.EventResponse:
+    properties:
+      data:
+        $ref: '#/definitions/bikefest_pkg_model.Event'
+      msg:
+        type: string
+    type: object
+  bikefest_pkg_model.Response:
+    properties:
+      data: {}
+      msg:
+        type: string
+    type: object
+  bikefest_pkg_model.Token:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+  bikefest_pkg_model.TokenResponse:
+    properties:
+      data:
+        $ref: '#/definitions/bikefest_pkg_model.Token'
+      msg:
+        type: string
+    type: object
+  bikefest_pkg_model.User:
+    properties:
+      createdAt:
+        type: string
+      deletedAt:
+        $ref: '#/definitions/gorm.DeletedAt'
+      events:
+        description: 'TODO: add more user info for line login and line message API
+          identity'
+        items:
+          $ref: '#/definitions/bikefest_pkg_model.Event'
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  bikefest_pkg_model.UserListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/bikefest_pkg_model.User'
+        type: array
+      msg:
+        type: string
+    type: object
+  bikefest_pkg_model.UserResponse:
+    properties:
+      data:
+        $ref: '#/definitions/bikefest_pkg_model.User'
+      msg:
+        type: string
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+info:
+  contact: {}
+paths:
+  /events:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of all events with pagination
+      parameters:
+      - description: Page number for pagination
+        in: query
+        name: page
+        type: integer
+      - description: Number of items per page for pagination
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of events
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Get all events
+      tags:
+      - Event
+  /events/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves an event by ID
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Get an event by ID
+      tags:
+      - Event
+    put:
+      consumes:
+      - application/json
+      description: Updates an event by ID with new details
+      parameters:
+      - description: Event ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Event Update Information
+        in: body
+        name: event
+        required: true
+        schema:
+          $ref: '#/definitions/bikefest_pkg_model.CreateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event successfully updated
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventResponse'
+        "400":
+          description: Bad Request - Invalid input
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Update an event
+      tags:
+      - Event
+  /events/test-store-all:
+    get:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses: {}
+      summary: Store all events from the json file in the frontend repo
+      tags:
+      - Event
+  /line-login/auth:
+    get:
+      consumes:
+      - application/json
+      description: Redirects the user to LINE's OAuth service for authentication.
+      parameters:
+      - description: Redirect path after login
+        in: query
+        name: redirect_path
+        type: string
+      produces:
+      - application/json
+      responses:
+        "301":
+          description: Redirect to the target URL
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Initiate LINE OAuth login
+      tags:
+      - OAuth
+  /line-login/callback:
+    get:
+      consumes:
+      - application/json
+      description: Handles the callback from LINE's OAuth service and redirects the
+        user to the frontend with the tokens in the query and cookies.
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: State
+        in: query
+        name: state
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "301":
+          description: Redirect to the frontend
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+      summary: Handle LINE OAuth callback
+      tags:
+      - OAuth
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users successfully retrieved
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.UserListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Get Users
+      tags:
+      - User
+  /users/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a user's information by their ID
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User successfully retrieved
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.UserResponse'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Get user by ID
+      tags:
+      - User
+  /users/events:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a list of events associated with a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of events associated with the user
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventListResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Get User Events
+      tags:
+      - User
+    post:
+      consumes:
+      - application/json
+      description: Subscribes a user to an event with the provided details
+      parameters:
+      - description: Event Subscription Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/bikefest_pkg_model.CreateEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully subscribed to the event
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventResponse'
+        "400":
+          description: Bad Request - Invalid input, such as invalid time format or
+            missing required fields
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "409":
+          description: Conflict - User already subscribed to the event
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "422":
+          description: Unprocessable Entity - User has exceeded the maximum number
+            of subscriptions
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error - Error storing the event, subscribing
+            the user, or enqueuing the event notification
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Subscribe to an event
+      tags:
+      - User
+  /users/events/{event_id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a specific event by its ID for a given user
+      parameters:
+      - description: Event ID
+        in: path
+        name: event_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Event successfully deleted
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Delete event
+      tags:
+      - User
+  /users/events/all:
+    post:
+      consumes:
+      - application/json
+      description: Subscribes a user to all events
+      parameters:
+      - description: Send the Line notification immediately
+        in: query
+        name: remind
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Successfully subscribed to the event
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.EventResponse'
+        "400":
+          description: Bad Request - Invalid input
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Subscribe to all events, and if remind is true, it will send all the
+        event notification to user immediately
+      tags:
+      - User
+  /users/login/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Simulates a login process for a user by generating fake access
+        and refresh tokens
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful, tokens generated
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.TokenResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Fake Login
+      tags:
+      - User
+  /users/logout:
+    post:
+      consumes:
+      - application/json
+      description: Logs out a user by invalidating their authentication token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "401":
+          description: 'Unauthorized: Invalid token format'
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: User logout
+      tags:
+      - User
+  /users/profile:
+    get:
+      consumes:
+      - application/json
+      description: Fetches the profile of a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile successfully retrieved
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.UserResponse'
+        "401":
+          description: 'Unauthorized: Invalid or expired token'
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      security:
+      - ApiKeyAuth: []
+      summary: Profile
+      tags:
+      - User
+  /users/refresh_token:
+    get:
+      consumes:
+      - application/json
+      description: Refreshes the access and refresh tokens for a user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Access and Refresh Tokens successfully generated
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.TokenResponse'
+        "400":
+          description: Bad Request - Invalid request format
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "401":
+          description: Unauthorized - Invalid or expired refresh token
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error - Error generating tokens
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Refresh User Token
+      tags:
+      - Authentication
+  /users/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a fake user for testing purposes
+      parameters:
+      - description: Create Fake User Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/bikefest_pkg_model.CreateFakeUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Fake register successful
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "400":
+          description: Bad Request - Invalid input data
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/bikefest_pkg_model.Response'
+      summary: Fake Register
+      tags:
+      - User
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
