@@ -28,7 +28,7 @@ type Application struct {
 	Engine           *gin.Engine
 	LineSocialClient *social.Client
 	AsynqClient      *asynq.Client
-	AsyncqInspector  *asynq.Inspector
+	AsynqInspector   *asynq.Inspector
 }
 
 func App(opts ...AppOpts) *Application {
@@ -54,7 +54,7 @@ func App(opts ...AppOpts) *Application {
 		Engine:           engine,
 		LineSocialClient: lineSocialClient,
 		AsynqClient:      asynqClient,
-		AsyncqInspector:  asynqInspector,
+		AsynqInspector:   asynqInspector,
 	}
 
 	for _, opt := range opts {
