@@ -25,12 +25,4 @@ func RegisterRoutes(app *bootstrap.Application, services *Services) {
 	// Register Event Routes
 	eventController := controller.NewEventController(services.EventService, services.AsynqService)
 	RegisterEventRouter(app, eventController)
-
-	// Register PsychoTest Routes
-	psychoTestController := controller.NewPsychoTestController(app.Conn)
-	RegisterPsychoTestRouter(app, psychoTestController)
-
-	// Register OAuth Routes
-	oauthController := controller.NewOAuthController(app.LineSocialClient, app.Env, services.UserService)
-	RegisterOAuthRouter(app, oauthController)
 }
