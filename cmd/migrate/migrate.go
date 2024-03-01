@@ -11,7 +11,6 @@ func main() {
 	db := bootstrap.NewDB(env)
 	err := db.AutoMigrate(
 		&model.Event{},
-		&model.User{},
 	)
 	if err != nil {
 		log.Fatal(err)

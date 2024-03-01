@@ -8,7 +8,6 @@ import (
 )
 
 type Services struct {
-	UserService  model.UserService
 	EventService model.EventService
 	AsynqService model.AsynqNotificationService
 }

@@ -76,66 +76,6 @@ func (ctrl *EventController) GetAllEvent(c *gin.Context) {
 	})
 }
 
-// UpdateEvent godoc
-// @Summary Update an event
-// @Description Updates an event by ID with new details
-// @Tags Event
-// @Accept json
-// @Produce json
-// @Security ApiKeyAuth
-// @Param id path string true "Event ID"
-// @Param event body model.CreateEventRequest true "Event Update Information"
-// @Success 200 {object} model.EventResponse "Event successfully updated"
-// @Failure 400 {object} model.Response "Bad Request - Invalid input"
-// @Failure 500 {object} model.Response "Internal Server Error"
-// @Router /events/{id} [put]
-func (ctrl *EventController) UpdateEvent(c *gin.Context) {
-	// TODO: only allow admin to update event
-
-	id := c.Param("id")
-	identity, _ := RetrieveIdentity(c, true)
-	if identity.UserID != "admin" {
-		c.AbortWithStatusJSON(http.StatusForbidden, model.Response{
-			Msg: "Permission denied",
-		})
-		return
-	}
-	// _ = identity.UserID
-	var request model.CreateEventRequest
-	if err := c.ShouldBind(&request); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, model.Response{
-			Msg: err.Error(),
-		})
-		return
-	}
-	event, err := ctrl.eventService.FindByID(c, id)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, model.Response{
-			Msg: err.Error(),
-		})
-		return
-	}
-	eventStartTimeP := parseEventTime(request.EventTimeStart, model.EventTimeLayout)
-	eventEndTimeP := parseEventTime(request.EventTimeEnd, model.EventTimeLayout)
-	updatedEvent := &model.Event{
-		ID:             request.ID,
-		EventTimeStart: eventStartTimeP,
-		EventTimeEnd:   eventEndTimeP,
-		EventDetail:    request.EventDetail,
-	}
-	_, err = ctrl.eventService.Update(c, updatedEvent)
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, model.Response{
-			Msg: err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, model.EventResponse{
-		Data: event,
-	})
-}
-
 // StoreAllEvent godoc
 // @Summary Store all events from the json file in the frontend repo
 // @Tags Event

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"dcard-backend-2024/pkg/model"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -23,21 +22,5 @@ func RetrievePagination(c *gin.Context) (page, limit uint64) {
 		limit = 10
 	}
 
-	return
-}
-
-// RetrieveIdentity retrieves the identity of the user from the context.
-// raise: Raise a http error when the identity doesn't exist.
-func RetrieveIdentity(c *gin.Context, raise bool) (identity *model.Identity, exist bool) {
-	id, exist := c.Get("identity")
-	if !exist {
-		if raise {
-			c.AbortWithStatusJSON(401, model.Response{
-				Msg: "Login Required",
-			})
-		}
-		return nil, false
-	}
-	identity = id.(*model.Identity)
 	return
 }

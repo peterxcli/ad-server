@@ -70,14 +70,10 @@ func main() {
 	app := bootstrap.App()
 
 	// Init services
-	userService := service.NewUserService(app.Conn, app.Cache)
 	eventService := service.NewEventService(app.Conn, app.Cache)
-	asynqService := service.NewAsynqService(app.AsynqClient, app.AsynqInspector, app.Env)
 
 	services := &router.Services{
-		UserService:  userService,
 		EventService: eventService,
-		AsynqService: asynqService,
 	}
 
 	// Init routes
