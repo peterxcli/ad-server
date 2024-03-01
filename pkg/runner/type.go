@@ -30,6 +30,7 @@ type GetAdRequest struct {
 
 type GetAdResponse struct {
 	Response
-	Ads   []model.Ad
+	Ads   []*model.Ad
 	total int
+	Err   error
 }

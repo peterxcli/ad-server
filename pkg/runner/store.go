@@ -36,8 +36,8 @@ func NewInMemoryStore() *InMemoryStore {
 }
 
 func (s *InMemoryStore) CreateAd(ad *model.Ad) (string, error) {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	// s.mutex.Lock()
+	// defer s.mutex.Unlock()
 
 	s.ads[ad.ID] = ad
 
@@ -64,9 +64,9 @@ func (s *InMemoryStore) CreateAd(ad *model.Ad) (string, error) {
 	return ad.ID, nil
 }
 
-func (s *InMemoryStore) GetAds(req GetAdRequest) (ads []*model.Ad, count int, err error) {
-	s.mutex.RLock()
-	defer s.mutex.RUnlock()
+func (s *InMemoryStore) GetAds(req *GetAdRequest) (ads []*model.Ad, count int, err error) {
+	// s.mutex.RLock()
+	// defer s.mutex.RUnlock()
 
 	// Start with a larger set from one of the indexes
 	candidates := map[string]*model.Ad{}

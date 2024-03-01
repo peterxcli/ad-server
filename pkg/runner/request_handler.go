@@ -14,17 +14,29 @@ func NewRunner() *Runner {
 	}
 }
 
-func (r *Runner) handleCreateAdRequest(req CreateAdRequest) {
-	// create ad
-	// create conditions
-	// create ad response
+func (r *Runner) handleCreateAdRequest(req *CreateAdRequest) {
+	adIDr, err := r.Store.CreateAd(&req.Ad)
 
+	if r.ResponseChan[req.RequestID] != nil {
+		r.ResponseChan[req.RequestID] <- &CreateAdResponse{
+			Response: Response{RequestID: req.RequestID},
+			AdID:     adIDr,
+			Err:      err,
+		}
+	}
 }
 
-func (r *Runner) handleGetAdRequest(req GetAdRequest) {
-	// get ad
-	// get conditions
-	// create get ad response
+func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
+	ads, total, err := r.Store.GetAds(req)
+
+	if r.ResponseChan[req.RequestID] != nil {
+		r.ResponseChan[req.RequestID] <- &GetAdResponse{
+			Response: Response{RequestID: req.RequestID},
+			Ads:      ads,
+			total:    total,
+			Err:      err,
+		}
+	}
 }
 
 func (r *Runner) Start() {
@@ -32,11 +44,11 @@ func (r *Runner) Start() {
 		select {
 		case req := <-r.RequestChan:
 			switch req.(type) {
-			case CreateAdRequest:
+			case *CreateAdRequest:
 				// the create ad request is from the rabbitmq
-				r.handleCreateAdRequest(req.(CreateAdRequest))
-			case GetAdRequest:
-				r.handleGetAdRequest(req.(GetAdRequest))
+				r.handleCreateAdRequest(req.(*CreateAdRequest))
+			case *GetAdRequest:
+				r.handleGetAdRequest(req.(*GetAdRequest))
 			}
 		}
 	}
