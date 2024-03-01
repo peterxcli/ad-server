@@ -21,6 +21,19 @@ type Ad struct {
 	Version int
 }
 
+// StartAt < Now() < EndAt
+type GetAdRequest struct {
+	// AgeStart < Age < AgeEnd
+	Age      int
+	Country  string
+	Gender   string
+	Platform string
+
+	Offset int
+	Limit  int
+}
+
+
 var schema = &memdb.DBSchema{
 	Tables: map[string]*memdb.TableSchema{
 		"ad": {

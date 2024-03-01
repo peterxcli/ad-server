@@ -25,14 +25,7 @@ type CreateAdResponse struct {
 
 type GetAdRequest struct {
 	Request
-	// StartAt < Now() < EndAt
-	// AgeStart < Age < AgeEnd
-	offset   int
-	limit    int
-	Age      int
-	Country  string
-	Gender   string
-	Platform string
+	model.GetAdRequest
 }
 
 type GetAdResponse struct {
