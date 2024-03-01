@@ -12,7 +12,6 @@ func main() {
 	err := db.AutoMigrate(
 		&model.Event{},
 		&model.User{},
-		&model.PsychoTest{},
 	)
 	if err != nil {
 		log.Fatal(err)

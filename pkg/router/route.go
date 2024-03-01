@@ -18,10 +18,6 @@ func RegisterRoutes(app *bootstrap.Application, services *Services) {
 	cors := middleware.CORSMiddleware()
 	app.Engine.Use(cors)
 
-	// Register User Routes
-	userController := controller.NewUserController(services.UserService, services.EventService, services.AsynqService, app.Env)
-	RegisterUserRoutes(app, userController)
-
 	// Register Event Routes
 	eventController := controller.NewEventController(services.EventService, services.AsynqService)
 	RegisterEventRouter(app, eventController)

@@ -1,16 +1,16 @@
 package runner
 
 type Runner struct {
-	State *RunnerState
-	Store *InMemoryStore
+	RequestChan  chan interface{}
+	ResponseChan map[string]chan interface{}
+	Store        *InMemoryStore
 }
 
 func NewRunner() *Runner {
 	return &Runner{
-		State: &RunnerState{
-			RequestChan: make(chan interface{}),
-		},
-		Store: NewInMemoryStore(),
+		RequestChan:  make(chan interface{}),
+		ResponseChan: make(map[string]chan interface{}),
+		Store:        NewInMemoryStore(),
 	}
 }
 
@@ -18,6 +18,7 @@ func (r *Runner) handleCreateAdRequest(req CreateAdRequest) {
 	// create ad
 	// create conditions
 	// create ad response
+
 }
 
 func (r *Runner) handleGetAdRequest(req GetAdRequest) {
@@ -29,7 +30,7 @@ func (r *Runner) handleGetAdRequest(req GetAdRequest) {
 func (r *Runner) Start() {
 	for {
 		select {
-		case req := <-r.State.RequestChan:
+		case req := <-r.RequestChan:
 			switch req.(type) {
 			case CreateAdRequest:
 				// the create ad request is from the rabbitmq
