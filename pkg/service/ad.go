@@ -75,7 +75,7 @@ func (a *AdService) Subscribe(offset int) error {
 	}
 }
 
-// lockAndStoreAndPublish
+// storeAndPublishWithLock
 //
 // 1. locks the lockKey
 //
@@ -84,7 +84,7 @@ func (a *AdService) Subscribe(offset int) error {
 // 3. publishes the ad into redis stream. (ensure the message sequence number is the same as the ad's version)
 //
 // 4. releases the lock
-func (a *AdService) lockAndStoreAndPublish(ctx context.Context, ad *model.Ad) (requestID string, err error) {
+func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad) (requestID string, err error) {
 	lock, err := a.locker.Obtain(ctx, a.lockKey, 0, nil)
 	if err != nil {
 		return
@@ -129,7 +129,7 @@ func (a *AdService) lockAndStoreAndPublish(ctx context.Context, ad *model.Ad) (r
 
 // CreateAd implements model.AdService.
 func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, err error) {
-	requestID, err := a.lockAndStoreAndPublish(ctx, ad)
+	requestID, err := a.storeAndPublishWithLock(ctx, ad)
 	if err != nil {
 		return "", err
 	}
