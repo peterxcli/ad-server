@@ -24,17 +24,55 @@ type AdService struct {
 	redis   *redis.Client
 	locker  *redislock.Client
 	lockKey string
-	stopCh  chan struct{}
+	// adStream is the redis stream name for the ad
+	adStream string
+	stopCh   chan struct{}
 }
 
-// Restore implements model.AdService.
+// Restore restores the latest version of an ad from the database.
+// It returns the version number of the restored ad and any error encountered.
+// The error could be ErrRecordNotFound if no ad is found or a DB connection error.
 func (a *AdService) Restore() (version int, err error) {
-	panic("unimplemented")
+	err = a.db.Model(&model.Ad{}).Select("MAX(version)").Scan(&version).Error
+	if err != nil {
+		return 0, err
+	}
+	return version, nil
 }
 
 // Subscribe implements model.AdService.
+// Subscribe implements model.AdService.
 func (a *AdService) Subscribe(offset int) error {
-	panic("unimplemented")
+	ctx := context.Background()
+	lastID := fmt.Sprintf("%d-0", offset) // Assuming offset can be mapped directly to Redis Stream IDs
+
+	for {
+		select {
+		case <-a.stopCh:
+			return nil
+		default:
+			// Reading from the stream
+			xReadArgs := &redis.XReadArgs{
+				Streams: []string{a.adStream, lastID},
+				Block:   0,
+				Count:   10,
+			}
+			msgs, err := a.redis.XRead(ctx, xReadArgs).Result()
+			if err != nil {
+				// Handle error, for example, log or wait before retrying
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			for _, msg := range msgs {
+				for _, m := range msg.Messages {
+					ad := &runner.CreateAdRequest{}
+					ad.FromMap(m.Values) // assume data are valid
+					a.runner.RequestChan <- ad
+					lastID = m.ID // Update lastID to the latest message ID
+				}
+			}
+		}
+	}
 }
 
 // lockAndStoreAndPublish
@@ -46,51 +84,54 @@ func (a *AdService) Subscribe(offset int) error {
 // 3. publishes the ad into redis stream. (ensure the message sequence number is the same as the ad's version)
 //
 // 4. releases the lock
-func (a *AdService) lockAndStoreAndPublish(ctx context.Context, ad *model.Ad) error {
+func (a *AdService) lockAndStoreAndPublish(ctx context.Context, ad *model.Ad) (requestID string, err error) {
 	lock, err := a.locker.Obtain(ctx, a.lockKey, 0, nil)
 	if err != nil {
-		return err
+		return
 	}
 	defer lock.Release(ctx)
 	txn := a.db.Begin()
-	if err := txn.Error; err != nil {
-		return err
+	if err = txn.Error; err != nil {
+		return
 	}
 	var maxVersion int
-	if err := txn.Raw("SELECT MAX(version) FROM ad").Scan(&maxVersion).Error; err != nil {
+	if err = txn.Raw("SELECT MAX(version) FROM ad").Scan(&maxVersion).Error; err != nil {
 		txn.Rollback()
-		return err
+		return
 	}
 	ad.Version = maxVersion + 1
-	if err := txn.Create(ad).Error; err != nil {
+	if err = txn.Create(ad).Error; err != nil {
 		txn.Rollback()
-		return err
+		return
 	}
 	err = txn.Commit().Error
 	if err != nil {
-		return err
+		return
+	}
+	requestID = uuid.New().String()
+	adReq := &runner.CreateAdRequest{
+		Request: runner.Request{RequestID: requestID},
+		Ad:      ad,
+	}
+	adReqMap, err := adReq.ToMap()
+	if err != nil {
+		return
 	}
 	_, err = a.redis.XAdd(ctx, &redis.XAddArgs{
-		Stream: "ad",
-		Values: ad,
+		Stream: a.adStream,
+		Values: adReqMap,
 	}).Result()
 	if err != nil {
-		return err
+		return
 	}
-	return nil
+	return requestID, nil
 }
 
 // CreateAd implements model.AdService.
-func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (string, error) {
-	err := a.lockAndStoreAndPublish(ctx, ad)
+func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, err error) {
+	requestID, err := a.lockAndStoreAndPublish(ctx, ad)
 	if err != nil {
 		return "", err
-	}
-
-	requestID := uuid.New().String()
-	a.runner.RequestChan <- &runner.CreateAdRequest{
-		Request: runner.Request{RequestID: requestID},
-		Ad:      ad,
 	}
 
 	select {

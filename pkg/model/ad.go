@@ -5,27 +5,27 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
 
 type Ad struct {
-	ID       string
-	Title    string
-	Content  string
-	StartAt  time.Time
-	EndAt    time.Time
-	AgeStart int
-	AgeEnd   int
-	Gender   []string
-	Country  []string
-	Platform []string
-	// Version log index(offset) in the redis stream
-	Version int
+	ID       uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+	Title    string         `gorm:"type:text" json:"title"`
+	Content  string         `gorm:"type:text" json:"content"`
+	StartAt  time.Time      `gorm:"type:timestamp" json:"start_at"`
+	EndAt    time.Time      `gorm:"type:timestamp" json:"end_at"`
+	AgeStart int            `json:"age_start"`
+	AgeEnd   int            `json:"age_end"`
+	Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
+	Country  []string       `gorm:"type:text[]" json:"country"`
+	Platform []string       `gorm:"type:text[]" json:"platform"`
+	Version  int            `gorm:"type:integer" json:"version"` // Version log index(offset) in the redis stream
 }
 
 func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
-	if a.ID == "" {
-		a.ID = uuid.New().String()
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
 	}
 	return
 }
@@ -43,7 +43,7 @@ type GetAdRequest struct {
 }
 
 type AdService interface {
-	CreateAd(ctx context.Context, ad *Ad) (string, error)
+	CreateAd(ctx context.Context, ad *Ad) (adID string, er error)
 	GetAds(ctx context.Context, req *GetAdRequest) ([]*Ad, int, error)
 	// Subscribe to the redis stream
 	Subscribe(offset int) error

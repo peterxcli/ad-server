@@ -54,26 +54,26 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err er
 		// Update the version
 		s.Version = max(s.Version, ad.Version)
 
-		s.ads[ad.ID] = ad
+		s.ads[ad.ID.String()] = ad
 
 		// Update indexes
 		for _, country := range ad.Country {
 			if s.adsByCountry[country] == nil {
 				s.adsByCountry[country] = make(map[string]*model.Ad)
 			}
-			s.adsByCountry[country][ad.ID] = ad
+			s.adsByCountry[country][ad.ID.String()] = ad
 		}
 		for _, gender := range ad.Gender {
 			if s.adsByGender[gender] == nil {
 				s.adsByGender[gender] = make(map[string]*model.Ad)
 			}
-			s.adsByGender[gender][ad.ID] = ad
+			s.adsByGender[gender][ad.ID.String()] = ad
 		}
 		for _, platform := range ad.Platform {
 			if s.adsByPlatform[platform] == nil {
 				s.adsByPlatform[platform] = make(map[string]*model.Ad)
 			}
-			s.adsByPlatform[platform][ad.ID] = ad
+			s.adsByPlatform[platform][ad.ID.String()] = ad
 		}
 	}
 	return s.Version, nil
@@ -87,29 +87,29 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	// Update the version
 	s.Version = ad.Version
 
-	s.ads[ad.ID] = ad
+	s.ads[ad.ID.String()] = ad
 
 	// Update indexes
 	for _, country := range ad.Country {
 		if s.adsByCountry[country] == nil {
 			s.adsByCountry[country] = make(map[string]*model.Ad)
 		}
-		s.adsByCountry[country][ad.ID] = ad
+		s.adsByCountry[country][ad.ID.String()] = ad
 	}
 	for _, gender := range ad.Gender {
 		if s.adsByGender[gender] == nil {
 			s.adsByGender[gender] = make(map[string]*model.Ad)
 		}
-		s.adsByGender[gender][ad.ID] = ad
+		s.adsByGender[gender][ad.ID.String()] = ad
 	}
 	for _, platform := range ad.Platform {
 		if s.adsByPlatform[platform] == nil {
 			s.adsByPlatform[platform] = make(map[string]*model.Ad)
 		}
-		s.adsByPlatform[platform][ad.ID] = ad
+		s.adsByPlatform[platform][ad.ID.String()] = ad
 	}
 
-	return ad.ID, nil
+	return ad.ID.String(), nil
 }
 
 func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, count int, err error) {
