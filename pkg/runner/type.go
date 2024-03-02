@@ -14,7 +14,7 @@ type Response struct {
 
 type CreateAdRequest struct {
 	Request
-	model.Ad
+	*model.Ad
 }
 
 type CreateAdResponse struct {
@@ -25,12 +25,12 @@ type CreateAdResponse struct {
 
 type GetAdRequest struct {
 	Request
-	model.GetAdRequest
+	*model.GetAdRequest
 }
 
 type GetAdResponse struct {
 	Response
 	Ads   []*model.Ad
-	total int
+	Total int
 	Err   error
 }

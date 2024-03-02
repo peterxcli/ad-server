@@ -1,9 +1,11 @@
 package model
 
 import (
+	"context"
 	"time"
 
-	"github.com/hashicorp/go-memdb"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Ad struct {
@@ -21,6 +23,13 @@ type Ad struct {
 	Version int
 }
 
+func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
+	if a.ID == "" {
+		a.ID = uuid.New().String()
+	}
+	return
+}
+
 // StartAt < Now() < EndAt
 type GetAdRequest struct {
 	// AgeStart < Age < AgeEnd
@@ -33,33 +42,14 @@ type GetAdRequest struct {
 	Limit  int
 }
 
+type AdService interface {
+	CreateAd(ctx context.Context, ad *Ad) (string, error)
+	GetAds(ctx context.Context, req *GetAdRequest) ([]*Ad, int, error)
+	// Subscribe to the redis stream
+	Subscribe(offset int) error
+}
 
-var schema = &memdb.DBSchema{
-	Tables: map[string]*memdb.TableSchema{
-		"ad": {
-			Name: "ad",
-			Indexes: map[string]*memdb.IndexSchema{
-				"id": {
-					Name:    "id",
-					Unique:  true,
-					Indexer: &memdb.StringFieldIndex{Field: "ID"},
-				},
-				"country": {
-					Name:    "country",
-					Unique:  false,
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Country"},
-				},
-				"gender": {
-					Name:    "gender",
-					Unique:  false,
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Gender"},
-				},
-				"platform": {
-					Name:    "platform",
-					Unique:  false,
-					Indexer: &memdb.StringSliceFieldIndex{Field: "Platform"},
-				},
-			},
-		},
-	},
+type InMemoryStore interface {
+	CreateAd(ad *Ad) (string, error)
+	GetAds(req *GetAdRequest) ([]*Ad, int, error)
 }
