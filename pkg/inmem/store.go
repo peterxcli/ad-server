@@ -1,4 +1,4 @@
-package runner
+package inmem
 
 import (
 	"dcard-backend-2024/pkg/model"
@@ -14,9 +14,10 @@ var (
 	ErrOffsetOutOfRange error = fmt.Errorf("offset is out of range")
 )
 
-//TODO: use the inmem DB: https://github.com/hashicorp/go-memdb for better indexing and searching
-
-type InMemoryStore struct {
+type InMemoryStoreImpl struct {
+	// use the highestVersion as redis stream's message sequence number, and also store it as ad's version
+	// then if the rebooted service's version is lower than the highestVersion, it will fetch the latest ads from the db
+	// and use the db's version as the highestVersion, then start subscribing the redis stream from the highestVersion offset
 	highestVersion int
 	ads            map[string]*model.Ad
 	adsByCountry   map[string]map[string]*model.Ad
@@ -25,8 +26,8 @@ type InMemoryStore struct {
 	mutex          sync.RWMutex
 }
 
-func NewInMemoryStore() *InMemoryStore {
-	return &InMemoryStore{
+func NewInMemoryStore() model.InMemoryStore {
+	return &InMemoryStoreImpl{
 		ads:           make(map[string]*model.Ad),
 		adsByCountry:  make(map[string]map[string]*model.Ad),
 		adsByGender:   make(map[string]map[string]*model.Ad),
@@ -35,7 +36,7 @@ func NewInMemoryStore() *InMemoryStore {
 	}
 }
 
-func (s *InMemoryStore) CreateAd(ad *model.Ad) (string, error) {
+func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	// s.mutex.Lock()
 	// defer s.mutex.Unlock()
 
@@ -64,7 +65,7 @@ func (s *InMemoryStore) CreateAd(ad *model.Ad) (string, error) {
 	return ad.ID, nil
 }
 
-func (s *InMemoryStore) GetAds(req *GetAdRequest) (ads []*model.Ad, count int, err error) {
+func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, count int, err error) {
 	// s.mutex.RLock()
 	// defer s.mutex.RUnlock()
 
@@ -87,6 +88,7 @@ func (s *InMemoryStore) GetAds(req *GetAdRequest) (ads []*model.Ad, count int, e
 	}
 
 	// Now filter these candidates further based on the other criteria
+	// TODO: use a B+ tree to index the ads by StartAt and EndAt and AgeStart and AgeEnd
 	filteredAds := []*model.Ad{}
 	for _, ad := range candidates {
 		now := time.Now()
