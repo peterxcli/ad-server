@@ -19,7 +19,7 @@ type Ad struct {
 	Gender   []string
 	Country  []string
 	Platform []string
-	// Version is used to handle optimistic lock
+	// Version log index(offset) in the redis stream
 	Version int
 }
 
@@ -47,9 +47,12 @@ type AdService interface {
 	GetAds(ctx context.Context, req *GetAdRequest) ([]*Ad, int, error)
 	// Subscribe to the redis stream
 	Subscribe(offset int) error
+	Restore() (version int, err error)
 }
 
 type InMemoryStore interface {
 	CreateAd(ad *Ad) (string, error)
 	GetAds(req *GetAdRequest) ([]*Ad, int, error)
+	// Restore the ads from the db, and return the highest version in the store
+	CreateBatchAds(ads []*Ad) (version int, err error)
 }

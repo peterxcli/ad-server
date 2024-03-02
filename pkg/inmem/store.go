@@ -3,6 +3,7 @@ package inmem
 import (
 	"dcard-backend-2024/pkg/model"
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 )
@@ -12,18 +13,20 @@ var (
 	ErrNoAdsFound error = fmt.Errorf("no ads found")
 	// ErrOffsetOutOfRange is returned when the offset is out of range, 404
 	ErrOffsetOutOfRange error = fmt.Errorf("offset is out of range")
+	// ErrInvalidVersion is returned when the version is invalid, inconsistent with the store
+	ErrInvalidVersion error = fmt.Errorf("invalid version")
 )
 
 type InMemoryStoreImpl struct {
-	// use the highestVersion as redis stream's message sequence number, and also store it as ad's version
-	// then if the rebooted service's version is lower than the highestVersion, it will fetch the latest ads from the db
-	// and use the db's version as the highestVersion, then start subscribing the redis stream from the highestVersion offset
-	highestVersion int
-	ads            map[string]*model.Ad
-	adsByCountry   map[string]map[string]*model.Ad
-	adsByGender    map[string]map[string]*model.Ad
-	adsByPlatform  map[string]map[string]*model.Ad
-	mutex          sync.RWMutex
+	// use the Version as redis stream's message sequence number, and also store it as ad's version
+	// then if the rebooted service's version is lower than the Version, it will fetch the latest ads from the db
+	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
+	Version       int
+	ads           map[string]*model.Ad
+	adsByCountry  map[string]map[string]*model.Ad
+	adsByGender   map[string]map[string]*model.Ad
+	adsByPlatform map[string]map[string]*model.Ad
+	mutex         sync.RWMutex
 }
 
 func NewInMemoryStore() model.InMemoryStore {
@@ -36,9 +39,53 @@ func NewInMemoryStore() model.InMemoryStore {
 	}
 }
 
+// CreateBatchAds creates a batch of ads in the store
+// this function does not check the version continuity.
+// because if we want to support update operation restore from the snapshot,
+// the version must not be continuous
+// (only used in the snapshot restore)
+func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err error) {
+	// sort the ads by version
+	sort.Slice(ads, func(i, j int) bool {
+		return ads[i].Version < ads[j].Version
+	})
+
+	for _, ad := range ads {
+		// Update the version
+		s.Version = max(s.Version, ad.Version)
+
+		s.ads[ad.ID] = ad
+
+		// Update indexes
+		for _, country := range ad.Country {
+			if s.adsByCountry[country] == nil {
+				s.adsByCountry[country] = make(map[string]*model.Ad)
+			}
+			s.adsByCountry[country][ad.ID] = ad
+		}
+		for _, gender := range ad.Gender {
+			if s.adsByGender[gender] == nil {
+				s.adsByGender[gender] = make(map[string]*model.Ad)
+			}
+			s.adsByGender[gender][ad.ID] = ad
+		}
+		for _, platform := range ad.Platform {
+			if s.adsByPlatform[platform] == nil {
+				s.adsByPlatform[platform] = make(map[string]*model.Ad)
+			}
+			s.adsByPlatform[platform][ad.ID] = ad
+		}
+	}
+	return s.Version, nil
+}
+
 func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
-	// s.mutex.Lock()
-	// defer s.mutex.Unlock()
+	if ad.Version != s.Version+1 {
+		return "", ErrInvalidVersion
+	}
+
+	// Update the version
+	s.Version = ad.Version
 
 	s.ads[ad.ID] = ad
 
@@ -66,9 +113,6 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 }
 
 func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, count int, err error) {
-	// s.mutex.RLock()
-	// defer s.mutex.RUnlock()
-
 	// Start with a larger set from one of the indexes
 	candidates := map[string]*model.Ad{}
 	if req.Country != "" {

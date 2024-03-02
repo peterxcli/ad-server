@@ -24,6 +24,12 @@ type AdService struct {
 	redis   *redis.Client
 	locker  *redislock.Client
 	lockKey string
+	stopCh  chan struct{}
+}
+
+// Restore implements model.AdService.
+func (a *AdService) Restore() (version int, err error) {
+	panic("unimplemented")
 }
 
 // Subscribe implements model.AdService.
@@ -126,5 +132,6 @@ func NewAdService(runner *runner.Runner, db *gorm.DB, redis *redis.Client, locke
 		redis:   redis,
 		locker:  locker,
 		lockKey: "lock:ad",
+		stopCh:  make(chan struct{}),
 	}
 }
