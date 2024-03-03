@@ -11,9 +11,7 @@ import (
 	"time"
 	_ "time/tzdata"
 
-	"github.com/hibiken/asynq"
-	social "github.com/kkdai/line-login-sdk-go"
-
+	"github.com/bsm/redislock"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -22,23 +20,19 @@ import (
 type AppOpts func(app *Application)
 
 type Application struct {
-	Env              *Env
-	Conn             *gorm.DB
-	Cache            *redis.Client
-	Engine           *gin.Engine
-	LineSocialClient *social.Client
-	AsynqClient      *asynq.Client
-	AsynqInspector   *asynq.Inspector
+	Env       *Env
+	Conn      *gorm.DB
+	Cache     *redis.Client
+	Engine    *gin.Engine
+	RedisLock *redislock.Client
 }
 
 func App(opts ...AppOpts) *Application {
 	env := NewEnv()
 	db := NewDB(env)
 	cache := NewCache(env)
+	redisLock := NewRdLock(cache)
 	engine := gin.Default()
-	lineSocialClient := NewLineSocialClient(env)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: cache.Options().Addr})
-	asynqInspector := asynq.NewInspector(asynq.RedisClientOpt{Addr: cache.Options().Addr})
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -48,13 +42,11 @@ func App(opts ...AppOpts) *Application {
 	time.Local = tz
 
 	app := &Application{
-		Env:              env,
-		Conn:             db,
-		Cache:            cache,
-		Engine:           engine,
-		LineSocialClient: lineSocialClient,
-		AsynqClient:      asynqClient,
-		AsynqInspector:   asynqInspector,
+		Env:       env,
+		Conn:      db,
+		Cache:     cache,
+		Engine:    engine,
+		RedisLock: redisLock,
 	}
 
 	for _, opt := range opts {

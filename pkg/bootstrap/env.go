@@ -11,7 +11,6 @@ type Env struct {
 	Redis  RedisEnv `envPrefix:"REDIS_"`
 	Server Server   `envPrefix:"SERVER_"`
 	JWT    JWTEnv   `envPrefix:"JWT_"`
-	Line   LineEnv  `envPrefix:"LINE_"`
 	Domain string   `env:"DOMAIN"`
 }
 
