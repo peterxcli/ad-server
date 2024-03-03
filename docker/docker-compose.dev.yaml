@@ -5,21 +5,21 @@ services:
   #   build:
   #     context: ../
   #     dockerfile: Dockerfile
-  #   image: bike-app
-  #   container_name: bike-app
+  #   image: dcard-app
+  #   container_name: dcard-app
   #   restart: unless-stopped
   #   ports:
   #     - '9000:5000'
   #   volumes:
   #     - ../app:/code
   #   networks:
-  #     - bike-networks
+  #     - dcard-networks
   #   depends_on:
   #     - db
 
 #  db:
 #    image: postgres:latest
-#    container_name: bike-db
+#    container_name: dcard-db
 #    restart: always
 #    environment:
 #      POSTGRES_DATABASE: ${APP_DB_DATABASE}
@@ -28,11 +28,11 @@ services:
 #    ports:
 #      - "5432:5432"
 #    networks:
-#      - bike-networks
+#      - dcard-networks
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: bike-pgadmin
+    container_name: dcard-pgadmin
     restart: unless-stopped
     ports:
       - '8085:80'
@@ -40,7 +40,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${APP_PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${APP_PGADMIN_PASSWORD}
     networks:
-      - bike-networks
+      - dcard-networks
 
 #  redis:
 #    image: redis:latest
@@ -51,9 +51,9 @@ services:
 #      - ${APP_REDIS_PORT}
 
 networks:
-  bike-networks:
+  dcard-networks:
     driver: bridge
 
 #volumes:
-#  bike-pgadmin:
-#    name: bike-pgadmin
+#  dcard-pgadmin:
+#    name: dcard-pgadmin

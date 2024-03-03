@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - bike-networks
+      - dcard-networks
 
   redis:
     image: redis:latest
@@ -21,8 +21,8 @@ services:
     ports:
       - ${APP_REDIS_PORT}:6379
     networks:
-      - bike-networks
+      - dcard-networks
 
 networks:
-  bike-networks:
+  dcard-networks:
     driver: bridge

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PROJECT_NAME="bike-festival-2024-backend"
+PROJECT_NAME="dcard-intern-assignment-2024"
 
 # Checking if docker-compose or docker compose command exists
 if command -v docker-compose &> /dev/null; then
