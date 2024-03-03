@@ -8,8 +8,8 @@ import (
 )
 
 type Services struct {
-	EventService model.EventService
-	AsynqService model.AsynqNotificationService
+	// EventService model.EventService
+	AdService model.AdService
 }
 
 func RegisterRoutes(app *bootstrap.Application, services *Services) {
@@ -17,7 +17,11 @@ func RegisterRoutes(app *bootstrap.Application, services *Services) {
 	cors := middleware.CORSMiddleware()
 	app.Engine.Use(cors)
 
-	// Register Event Routes
-	eventController := controller.NewEventController(services.EventService, services.AsynqService)
-	RegisterEventRouter(app, eventController)
+	// // Register Event Routes
+	// eventController := controller.NewEventController(services.EventService, services.AsynqService)
+	// RegisterEventRouter(app, eventController)
+
+	// Register Ad Routes
+	adController := controller.NewAdController(services.AdService)
+	RegisterAdRouter(app, adController)
 }

@@ -70,10 +70,16 @@ func main() {
 	app := bootstrap.App()
 
 	// Init services
-	eventService := service.NewEventService(app.Conn, app.Cache)
+	// eventService := service.NewEventService(app.Conn, app.Cache)
+	adService := service.NewAdService(
+		app.Runner,
+		app.Conn,
+		app.Cache,
+		app.RedisLock,
+	)
 
 	services := &router.Services{
-		EventService: eventService,
+		AdService: adService,
 	}
 
 	// Init routes

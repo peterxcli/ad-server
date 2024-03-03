@@ -2,8 +2,6 @@ package runner
 
 import (
 	"dcard-backend-2024/pkg/model"
-
-	"github.com/bsm/redislock"
 )
 
 type Runner struct {
@@ -12,7 +10,7 @@ type Runner struct {
 	Store        model.InMemoryStore
 }
 
-func NewRunner(store model.InMemoryStore, locker *redislock.Client) *Runner {
+func NewRunner(store model.InMemoryStore) *Runner {
 	return &Runner{
 		RequestChan:  make(chan interface{}),
 		ResponseChan: make(map[string]chan interface{}),

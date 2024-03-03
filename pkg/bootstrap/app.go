@@ -2,6 +2,8 @@ package bootstrap
 
 import (
 	"context"
+	"dcard-backend-2024/pkg/inmem"
+	"dcard-backend-2024/pkg/runner"
 	"fmt"
 	"log"
 	"net/http"
@@ -25,6 +27,7 @@ type Application struct {
 	Cache     *redis.Client
 	Engine    *gin.Engine
 	RedisLock *redislock.Client
+	Runner    *runner.Runner
 }
 
 func App(opts ...AppOpts) *Application {
@@ -33,6 +36,8 @@ func App(opts ...AppOpts) *Application {
 	cache := NewCache(env)
 	redisLock := NewRdLock(cache)
 	engine := gin.Default()
+	adInMemStore := inmem.NewInMemoryStore()
+	runner := runner.NewRunner(adInMemStore)
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -47,6 +52,7 @@ func App(opts ...AppOpts) *Application {
 		Cache:     cache,
 		Engine:    engine,
 		RedisLock: redisLock,
+		Runner:    runner,
 	}
 
 	for _, opt := range opts {
