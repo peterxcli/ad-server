@@ -26,12 +26,13 @@ func NewAdController(adService model.AdService) *AdController {
 // @Param offset query int false "Offset for pagination"
 // @Param limit query int false "Limit for pagination"
 // @Param age query int false "Age"
-// @Param gender query
+// @Param gender query string false "Gender"
 // @Param country query string false "Country"
 // @Param platform query string false "Platform"
 // @Success 200 {object} model.GetAdsPageResponse
 // @Failure 404 {object} model.Response
 // @Failure 500 {object} model.Response
+// @Router /api/v1/ad [get]
 func (ac *AdController) GetAd(c *gin.Context) {
 	var req model.GetAdRequest
 	if err := c.BindQuery(&req); err != nil {
@@ -60,6 +61,7 @@ func (ac *AdController) GetAd(c *gin.Context) {
 // @Success 201 {object} model.CreateAdResponse
 // @Failure 400 {object} model.Response
 // @Failure 500 {object} model.Response
+// @Router /api/v1/ad [post]
 func (ac *AdController) CreateAd(c *gin.Context) {
 	var ad model.CreateAdRequest
 	if err := c.BindJSON(&ad); err != nil {

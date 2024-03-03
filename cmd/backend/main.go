@@ -9,9 +9,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/hibiken/asynq"
-	"github.com/hibiken/asynqmon"
-
 	"github.com/gin-gonic/gin"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -22,8 +19,8 @@ func SetUpSwagger(spec *swag.Spec, app *bootstrap.Application) {
 	spec.BasePath = "/"
 	spec.Host = fmt.Sprintf("%s:%d", "localhost", app.Env.Server.Port)
 	spec.Schemes = []string{"http", "https"}
-	spec.Title = "NCKU Bike Festival 2024 Official Website Backend API"
-	spec.Description = "This is the official backend API for Bike Festival 2024 Official Website"
+	spec.Title = "Dcard Internship Assignment 2024 - Advertisement Backend API"
+	spec.Description = "This is the API document for the Dcard Internship Assignment 2024 - Advertisement Backend"
 }
 
 func ReverseProxy() gin.HandlerFunc {
@@ -51,20 +48,6 @@ func ReverseProxy() gin.HandlerFunc {
 	}
 }
 
-func SetUpAsynqMon(app *bootstrap.Application) {
-	h := asynqmon.New(asynqmon.Options{
-		RootPath:     "/monitoring", // RootPath specifies the root for asynqmon app
-		RedisConnOpt: asynq.RedisClientOpt{Addr: app.Cache.Options().Addr},
-	})
-
-	// Use Gin's Group function to create a route group with the specified prefix
-	monitoringGroup := app.Engine.Group(h.RootPath())
-
-	// Use the Gin.WrapH function to convert Asynqmon's http.Handler to a Gin-compatible handler
-	// and register it to handle all routes under "/monitoring/"
-	monitoringGroup.Any("/*action", gin.WrapH(h))
-}
-
 func main() {
 	// Init config
 	app := bootstrap.App()
@@ -90,7 +73,7 @@ func main() {
 	// @in header
 	// @name Authorization
 	SetUpSwagger(docs.SwaggerInfo, app)
-	SetUpAsynqMon(app)
+
 	app.Engine.GET("/swagger/*any",
 		ginSwagger.WrapHandler(
 			swaggerfiles.Handler,
