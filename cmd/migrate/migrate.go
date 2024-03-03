@@ -10,7 +10,7 @@ func main() {
 	env := bootstrap.NewEnv()
 	db := bootstrap.NewDB(env)
 	err := db.AutoMigrate(
-		&model.Event{},
+		&model.Ad{},
 	)
 	if err != nil {
 		log.Fatal(err)

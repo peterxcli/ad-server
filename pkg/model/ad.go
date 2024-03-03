@@ -71,6 +71,7 @@ type AdService interface {
 	// Subscribe to the redis stream
 	Subscribe(offset int) error
 	Restore() (version int, err error)
+	Run() error
 }
 
 type InMemoryStore interface {

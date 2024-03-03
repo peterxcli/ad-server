@@ -29,6 +29,12 @@ type AdService struct {
 	stopCh   chan struct{}
 }
 
+// Run implements model.AdService.
+func (a *AdService) Run() error {
+	// TODO
+	panic("unimplemented")
+}
+
 // Restore restores the latest version of an ad from the database.
 // It returns the version number of the restored ad and any error encountered.
 // The error could be ErrRecordNotFound if no ad is found or a DB connection error.
