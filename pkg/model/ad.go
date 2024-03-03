@@ -18,8 +18,8 @@ type Ad struct {
 	AgeStart int            `json:"age_start"`
 	AgeEnd   int            `json:"age_end"`
 	Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
-	Country  []string       `gorm:"type:text[]" json:"country"`
-	Platform []string       `gorm:"type:text[]" json:"platform"`
+	Country  pq.StringArray `gorm:"type:text[]" json:"country"`
+	Platform pq.StringArray `gorm:"type:text[]" json:"platform"`
 	Version  int            `gorm:"type:integer" json:"version"` // Version log index(offset) in the redis stream
 }
 
@@ -33,13 +33,36 @@ func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
 // StartAt < Now() < EndAt
 type GetAdRequest struct {
 	// AgeStart < Age < AgeEnd
-	Age      int
-	Country  string
-	Gender   string
-	Platform string
+	Age      int    `form:"age" binding:"omitempty"`
+	Country  string `form:"country" binding:"omitempty"`
+	Gender   string `form:"gender" binding:"omitempty"`
+	Platform string `form:"platform" binding:"omitempty"`
 
-	Offset int
-	Limit  int
+	Offset int `form:"offset" binding:"omitempty"`
+	Limit  int `form:"limit" binding:"omitempty"`
+}
+
+type GetAdsPageResponse struct {
+	Ads   []*Ad `json:"ads"`
+	Total int   `json:"total"`
+}
+
+type CreateAdRequest struct {
+	Title    string    `json:"title" binding:"required"`
+	Content  string    `json:"content" binding:"required"`
+	StartAt  time.Time `json:"start_at" binding:"required"`
+	EndAt    time.Time `json:"end_at" binding:"required"`
+	AgeStart int       `json:"age_start" binding:"required"`
+	AgeEnd   int       `json:"age_end" binding:"required"`
+	Gender   []string  `json:"gender" binding:"required"`
+	Country  []string  `json:"country" binding:"required"`
+	Platform []string  `json:"platform" binding:"required"`
+}
+
+type CreateAdResponse struct {
+	Response
+	// Data id of the created ad
+	Data string `json:"data"`
 }
 
 type AdService interface {
