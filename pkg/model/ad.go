@@ -72,6 +72,7 @@ type AdService interface {
 	Subscribe(offset int) error
 	Restore() (version int, err error)
 	Run() error
+	Shutdown(ctx context.Context) error
 }
 
 type InMemoryStore interface {

@@ -61,7 +61,7 @@ func main() {
 		app.RedisLock,
 	)
 
-	services := &router.Services{
+	services := &bootstrap.Services{
 		AdService: adService,
 	}
 
@@ -82,5 +82,5 @@ func main() {
 	)
 	app.Engine.GET("/docs/*any", ReverseProxy())
 
-	app.Run()
+	app.Run(services)
 }

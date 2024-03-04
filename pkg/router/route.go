@@ -4,15 +4,10 @@ import (
 	"dcard-backend-2024/pkg/bootstrap"
 	"dcard-backend-2024/pkg/controller"
 	"dcard-backend-2024/pkg/middleware"
-	"dcard-backend-2024/pkg/model"
 )
 
-type Services struct {
-	// EventService model.EventService
-	AdService model.AdService
-}
 
-func RegisterRoutes(app *bootstrap.Application, services *Services) {
+func RegisterRoutes(app *bootstrap.Application, services *bootstrap.Services) {
 	// Register Global Middleware
 	cors := middleware.CORSMiddleware()
 	app.Engine.Use(cors)

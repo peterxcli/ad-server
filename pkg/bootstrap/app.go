@@ -63,7 +63,7 @@ func App(opts ...AppOpts) *Application {
 }
 
 // Run the application
-func (app *Application) Run() {
+func (app *Application) Run(services *Services) {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", app.Env.Server.Port),
 		Handler: app.Engine,
@@ -96,6 +96,11 @@ func (app *Application) Run() {
 			if err != nil {
 				log.Fatalf("Could not stop http server: %v", err)
 			}
+		}
+
+		err = services.AdService.Shutdown(ctx)
+		if err != nil {
+			log.Fatalf("Could not stop ad service: %v", err)
 		}
 	}
 }
