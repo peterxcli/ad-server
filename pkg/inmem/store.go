@@ -6,6 +6,9 @@ import (
 	"sort"
 	"sync"
 	"time"
+
+	mapset "github.com/deckarep/golang-set/v2"
+	"github.com/hashicorp/go-memdb"
 )
 
 var (
@@ -23,18 +26,19 @@ type InMemoryStoreImpl struct {
 	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
 	Version       int
 	ads           map[string]*model.Ad
-	adsByCountry  map[string]map[string]*model.Ad
-	adsByGender   map[string]map[string]*model.Ad
-	adsByPlatform map[string]map[string]*model.Ad
+	adsByCountry  map[string]mapset.Set[string]
+	adsByGender   map[string]mapset.Set[string]
+	adsByPlatform map[string]mapset.Set[string]
 	mutex         sync.RWMutex
+	memdb         *memdb.MemDB
 }
 
 func NewInMemoryStore() model.InMemoryStore {
 	return &InMemoryStoreImpl{
 		ads:           make(map[string]*model.Ad),
-		adsByCountry:  make(map[string]map[string]*model.Ad),
-		adsByGender:   make(map[string]map[string]*model.Ad),
-		adsByPlatform: make(map[string]map[string]*model.Ad),
+		adsByCountry:  make(map[string]mapset.Set[string]),
+		adsByGender:   make(map[string]mapset.Set[string]),
+		adsByPlatform: make(map[string]mapset.Set[string]),
 		mutex:         sync.RWMutex{},
 	}
 }
@@ -45,6 +49,9 @@ func NewInMemoryStore() model.InMemoryStore {
 // the version must not be continuous
 // (only used in the snapshot restore)
 func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	// sort the ads by version
 	sort.Slice(ads, func(i, j int) bool {
 		return ads[i].Version < ads[j].Version
@@ -59,27 +66,30 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err er
 		// Update indexes
 		for _, country := range ad.Country {
 			if s.adsByCountry[country] == nil {
-				s.adsByCountry[country] = make(map[string]*model.Ad)
+				s.adsByCountry[country] = mapset.NewSet[string]()
 			}
-			s.adsByCountry[country][ad.ID.String()] = ad
+			s.adsByCountry[country].Add(ad.ID.String())
 		}
 		for _, gender := range ad.Gender {
 			if s.adsByGender[gender] == nil {
-				s.adsByGender[gender] = make(map[string]*model.Ad)
+				s.adsByGender[gender] = mapset.NewSet[string]()
 			}
-			s.adsByGender[gender][ad.ID.String()] = ad
+			s.adsByGender[gender].Add(ad.ID.String())
 		}
 		for _, platform := range ad.Platform {
 			if s.adsByPlatform[platform] == nil {
-				s.adsByPlatform[platform] = make(map[string]*model.Ad)
+				s.adsByPlatform[platform] = mapset.NewSet[string]()
 			}
-			s.adsByPlatform[platform][ad.ID.String()] = ad
+			s.adsByPlatform[platform].Add(ad.ID.String())
 		}
 	}
 	return s.Version, nil
 }
 
 func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
 	if ad.Version != s.Version+1 {
 		return "", ErrInvalidVersion
 	}
@@ -92,57 +102,68 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	// Update indexes
 	for _, country := range ad.Country {
 		if s.adsByCountry[country] == nil {
-			s.adsByCountry[country] = make(map[string]*model.Ad)
+			s.adsByCountry[country] = mapset.NewSet[string]()
 		}
-		s.adsByCountry[country][ad.ID.String()] = ad
+		s.adsByCountry[country].Add(ad.ID.String())
 	}
 	for _, gender := range ad.Gender {
 		if s.adsByGender[gender] == nil {
-			s.adsByGender[gender] = make(map[string]*model.Ad)
+			s.adsByGender[gender] = mapset.NewSet[string]()
 		}
-		s.adsByGender[gender][ad.ID.String()] = ad
+		s.adsByGender[gender].Add(ad.ID.String())
 	}
 	for _, platform := range ad.Platform {
 		if s.adsByPlatform[platform] == nil {
-			s.adsByPlatform[platform] = make(map[string]*model.Ad)
+			s.adsByPlatform[platform] = mapset.NewSet[string]()
 		}
-		s.adsByPlatform[platform][ad.ID.String()] = ad
+		s.adsByPlatform[platform].Add(ad.ID.String())
 	}
 
 	return ad.ID.String(), nil
 }
 
 func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, count int, err error) {
-	// Start with a larger set from one of the indexes
-	candidates := map[string]*model.Ad{}
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+
+	// Calculate the set based on filters
+	var candidateIDs mapset.Set[string]
 	if req.Country != "" {
-		for id, ad := range s.adsByCountry[req.Country] {
-			candidates[id] = ad
-		}
+		candidateIDs = s.adsByCountry[req.Country]
 	}
 	if req.Gender != "" {
-		for id, ad := range s.adsByGender[req.Gender] {
-			candidates[id] = ad
+		if candidateIDs == nil {
+			candidateIDs = s.adsByGender[req.Gender]
+		} else {
+			candidateIDs = candidateIDs.Intersect(s.adsByGender[req.Gender])
 		}
 	}
 	if req.Platform != "" {
-		for id, ad := range s.adsByPlatform[req.Platform] {
-			candidates[id] = ad
+		if candidateIDs == nil {
+			candidateIDs = s.adsByPlatform[req.Platform]
+		} else {
+			candidateIDs = candidateIDs.Intersect(s.adsByPlatform[req.Platform])
 		}
 	}
 
-	// Now filter these candidates further based on the other criteria
-	// TODO: use a B+ tree to index the ads by StartAt and EndAt and AgeStart and AgeEnd
-	filteredAds := []*model.Ad{}
-	for _, ad := range candidates {
-		now := time.Now()
+	// If no filters are applied, use all ads
+	if candidateIDs == nil {
+		candidateIDs = mapset.NewSet[string]()
+		for id := range s.ads {
+			candidateIDs.Add(id)
+		}
+	}
+
+	// Filter by time and age, and apply pagination
+	now := time.Now()
+	for _, id := range candidateIDs.ToSlice() {
+		ad := s.ads[id]
 		if ad.StartAt.Before(now) && ad.EndAt.After(now) && ad.AgeStart <= req.Age && req.Age <= ad.AgeEnd {
-			filteredAds = append(filteredAds, ad)
+			ads = append(ads, ad)
 		}
 	}
 
-	total := len(filteredAds)
-
+	total := len(ads)
 	if total == 0 {
 		return nil, 0, ErrNoAdsFound
 	}
@@ -150,7 +171,6 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	// Apply pagination
 	start := req.Offset
 	if start < 0 || start >= total {
-		// Return empty slice if offset is out of range
 		return nil, 0, ErrOffsetOutOfRange
 	}
 
@@ -159,7 +179,5 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 		end = total
 	}
 
-	paginatedAds := filteredAds[start:end]
-
-	return paginatedAds, total, nil
+	return ads[start:end], total, nil
 }
