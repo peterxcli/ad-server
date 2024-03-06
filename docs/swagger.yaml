@@ -11,7 +11,11 @@ definitions:
         items:
           type: string
         type: array
+      created_at:
+        type: string
       end_at:
+        example: "2006-01-02 15:04:05"
+        format: date
         type: string
       gender:
         items:
@@ -24,36 +28,51 @@ definitions:
           type: string
         type: array
       start_at:
+        example: "2006-01-02 15:04:05"
+        format: date
         type: string
       title:
         type: string
       version:
-        description: Version log index(offset) in the redis stream
+        description: Version, cant use sequence number, because the version is not
+          continuous if we want to support update and delete
         type: integer
     type: object
   dcard-backend-2024_pkg_model.CreateAdRequest:
     properties:
       age_end:
+        example: 65
         type: integer
       age_start:
+        example: 18
         type: integer
       content:
         type: string
       country:
+        example:
+        - US
         items:
           type: string
         type: array
       end_at:
+        example: "2006-01-02 15:04:05"
+        format: date
         type: string
       gender:
+        example:
+        - F
         items:
           type: string
         type: array
       platform:
+        example:
+        - ios
         items:
           type: string
         type: array
       start_at:
+        example: "2006-01-02 15:04:05"
+        format: date
         type: string
       title:
         type: string

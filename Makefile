@@ -1,4 +1,4 @@
-.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot
+.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot bench
 
 BLUE = \033[34m
 NC = \033[0m
@@ -55,3 +55,6 @@ docs: install ## Generate the swagger docs
 
 bot: ## Run the bot
 	./script/run.sh dev bot
+
+bench: ## Run the benchmarks
+	go test -run='^$' -bench=. -benchtime=20s -benchmem ./...

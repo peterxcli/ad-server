@@ -152,8 +152,13 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "end_at": {
+                "created_at": {
                     "type": "string"
+                },
+                "end_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05"
                 },
                 "gender": {
                     "type": "array",
@@ -171,13 +176,15 @@ const docTemplate = `{
                     }
                 },
                 "start_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05"
                 },
                 "title": {
                     "type": "string"
                 },
                 "version": {
-                    "description": "Version log index(offset) in the redis stream",
+                    "description": "Version, cant use sequence number, because the version is not continuous if we want to support update and delete",
                     "type": "integer"
                 }
             }
@@ -197,10 +204,12 @@ const docTemplate = `{
             ],
             "properties": {
                 "age_end": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 65
                 },
                 "age_start": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 18
                 },
                 "content": {
                     "type": "string"
@@ -209,25 +218,38 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "US"
+                    ]
                 },
                 "end_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05"
                 },
                 "gender": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "F"
+                    ]
                 },
                 "platform": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "ios"
+                    ]
                 },
                 "start_at": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05"
                 },
                 "title": {
                     "type": "string"
