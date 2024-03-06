@@ -60,8 +60,8 @@ func NewMockAd() *model.Ad {
 	endOffset := time.Duration(randRange(1, 7)) * 24 * time.Hour    // Random end date within the next week
 
 	// Random age range ensuring AgeStart is less than AgeEnd
-	ageStart := randRange(18, 65)
-	ageEnd := randRange(ageStart, 65)
+	ageStart := randRange(18, 63)
+	ageEnd := randRange(ageStart+1, 65)
 
 	// Random selection of genders
 
@@ -117,7 +117,8 @@ func TestGetAds(t *testing.T) {
 
 	ads, total, err := store.GetAds(request)
 	assert.Nil(t, err)
-	assert.GreaterOrEqual(t, total, 0)
+	assert.Equal(t, total, 1)
+	assert.Equal(t, ads[0].ID, ad.ID)
 	assert.Len(t, ads, total)
 }
 
@@ -157,7 +158,7 @@ func TestCreatePerformance(t *testing.T) {
 
 	elapsed := time.Since(start)
 	averageOpsPerSecond := float64(batchSize) / elapsed.Seconds()
-
+	t.Logf("Create performance: %.2f ops/sec", averageOpsPerSecond)
 	if averageOpsPerSecond < 10000 {
 		assert.False(t, true, "Average operations per second is too low")
 	}
@@ -213,4 +214,10 @@ func TestReadAdsPerformanceAndAccuracy(t *testing.T) {
 
 	assert.Greater(t, int(averageOpsPerSecond), 10000, "The read operation is too slow")
 	t.Logf("Read performance: %.2f ops/sec", averageOpsPerSecond)
+}
+
+func BenchmarkReadAds(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		TestReadAdsPerformanceAndAccuracy(&testing.T{})
+	}
 }

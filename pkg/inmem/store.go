@@ -6,7 +6,9 @@ import (
 	"sort"
 	"sync"
 	"time"
+	"unsafe"
 
+	"github.com/biogo/store/interval"
 	mapset "github.com/deckarep/golang-set/v2"
 	"github.com/hashicorp/go-memdb"
 )
@@ -20,26 +22,48 @@ var (
 	ErrInvalidVersion error = fmt.Errorf("invalid version")
 )
 
+type IntInterval struct {
+	Start, End int
+	UID        uintptr
+	Payload    interface{} // ad id
+}
+
+func (i IntInterval) Overlap(b interval.IntRange) bool {
+	return i.Start < b.End && i.End > b.Start
+}
+
+func (i IntInterval) ID() uintptr {
+	return i.UID
+}
+
+func (i IntInterval) Range() interval.IntRange {
+	return interval.IntRange{Start: i.Start, End: i.End}
+}
+
 type InMemoryStoreImpl struct {
 	// use the Version as redis stream's message sequence number, and also store it as ad's version
 	// then if the rebooted service's version is lower than the Version, it will fetch the latest ads from the db
 	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
-	Version       int
-	ads           map[string]*model.Ad
-	adsByCountry  map[string]mapset.Set[string]
-	adsByGender   map[string]mapset.Set[string]
-	adsByPlatform map[string]mapset.Set[string]
-	mutex         sync.RWMutex
-	memdb         *memdb.MemDB
+	Version          int
+	ads              map[string]*model.Ad
+	adsByCountry     map[string]mapset.Set[string]
+	adsByGender      map[string]mapset.Set[string]
+	adsByPlatform    map[string]mapset.Set[string]
+	adByTimeInterval *interval.IntTree
+	adByAge          *interval.IntTree
+	mutex            sync.RWMutex
+	memdb            *memdb.MemDB
 }
 
 func NewInMemoryStore() model.InMemoryStore {
 	return &InMemoryStoreImpl{
-		ads:           make(map[string]*model.Ad),
-		adsByCountry:  make(map[string]mapset.Set[string]),
-		adsByGender:   make(map[string]mapset.Set[string]),
-		adsByPlatform: make(map[string]mapset.Set[string]),
-		mutex:         sync.RWMutex{},
+		ads:              make(map[string]*model.Ad),
+		adsByCountry:     make(map[string]mapset.Set[string]),
+		adsByGender:      make(map[string]mapset.Set[string]),
+		adsByPlatform:    make(map[string]mapset.Set[string]),
+		adByTimeInterval: &interval.IntTree{},
+		adByAge:          &interval.IntTree{},
+		mutex:            sync.RWMutex{},
 	}
 }
 
@@ -118,6 +142,29 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 		}
 		s.adsByPlatform[platform].Add(ad.ID.String())
 	}
+	err := s.adByTimeInterval.Insert(
+		&IntInterval{
+			Start:   int(ad.StartAt.Unix()),
+			End:     int(ad.EndAt.Unix()),
+			UID:     uintptr(unsafe.Pointer(ad)),
+			Payload: ad.ID.String(),
+		}, false)
+
+	if err != nil {
+		return "", err
+	}
+
+	err = s.adByAge.Insert(
+		&IntInterval{
+			Start:   ad.AgeStart,
+			End:     ad.AgeEnd,
+			UID:     uintptr(unsafe.Pointer(ad)),
+			Payload: ad.ID.String(),
+		}, false)
+
+	if err != nil {
+		return "", err
+	}
 
 	return ad.ID.String(), nil
 }
@@ -125,9 +172,44 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, count int, err error) {
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
+	now := time.Now()
+	// nowUnix := int(now.Unix())
 
 	// Calculate the set based on filters
 	var candidateIDs mapset.Set[string]
+	timeIntervalIDs := mapset.NewSet[string]()
+	ageIntervalIDs := mapset.NewSet[string]()
+
+	// filter time with the interval tree
+	// timeIntervals := s.adByTimeInterval.Get(IntInterval{
+	// 	Start: int(now.Unix()),
+	// 	End:   int(now.Unix()),
+	// })
+
+	// for _, timeInterval := range timeIntervals {
+	// 	adId := timeInterval.(*IntInterval).Payload.(string)
+	// 	timeIntervalIDs.Add(adId)
+	// }
+
+	// filter age with the interval tree
+	// ageIntervals := s.adByAge.Get(IntInterval{
+	// 	Start: req.Age,
+	// 	End:   req.Age,
+	// })
+	// for _, ageInterval := range ageIntervals {
+	// 	adId := ageInterval.(*IntInterval).Payload.(string)
+	// 	ageIntervalIDs.Add(adId)
+	// }
+
+	// intersect the time and age interval results
+	if timeIntervalIDs.Cardinality() > 0 && ageIntervalIDs.Cardinality() > 0 {
+		candidateIDs = timeIntervalIDs.Intersect(ageIntervalIDs)
+	} else if timeIntervalIDs.Cardinality() > 0 {
+		candidateIDs = timeIntervalIDs
+	} else if ageIntervalIDs.Cardinality() > 0 {
+		candidateIDs = ageIntervalIDs
+	}
+
 	if req.Country != "" {
 		candidateIDs = s.adsByCountry[req.Country]
 	}
@@ -155,7 +237,6 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	}
 
 	// Filter by time and age, and apply pagination
-	now := time.Now()
 	for _, id := range candidateIDs.ToSlice() {
 		ad := s.ads[id]
 		if ad.StartAt.Before(now) && ad.EndAt.After(now) && ad.AgeStart <= req.Age && req.Age <= ad.AgeEnd {
