@@ -78,8 +78,8 @@ func NewMockAd() *model.Ad {
 		ID:       uuid.New(),
 		Title:    faker.Sentence(),
 		Content:  faker.Paragraph(),
-		StartAt:  time.Now().Add(startOffset),
-		EndAt:    time.Now().Add(endOffset),
+		StartAt:  model.CustomTime(time.Now().Add(startOffset)),
+		EndAt:    model.CustomTime(time.Now().Add(endOffset)),
 		AgeStart: ageStart,
 		AgeEnd:   ageEnd,
 		Gender:   genderSelection,
@@ -134,9 +134,8 @@ func TestCreateBatchAds(t *testing.T) {
 		ads = append(ads, ad)
 	}
 
-	version, err := store.CreateBatchAds(ads)
+	err := store.CreateBatchAds(ads)
 	assert.Nil(t, err)
-	assert.Greater(t, version, 0)
 }
 
 func TestCreatePerformance(t *testing.T) {
@@ -153,7 +152,7 @@ func TestCreatePerformance(t *testing.T) {
 
 	start := time.Now()
 
-	_, err := store.CreateBatchAds(ads)
+	err := store.CreateBatchAds(ads)
 	assert.Nil(t, err)
 
 	elapsed := time.Since(start)

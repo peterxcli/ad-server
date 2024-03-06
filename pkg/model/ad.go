@@ -13,14 +13,16 @@ type Ad struct {
 	ID       uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
 	Title    string         `gorm:"type:text" json:"title"`
 	Content  string         `gorm:"type:text" json:"content"`
-	StartAt  time.Time      `gorm:"type:timestamp" json:"start_at"`
-	EndAt    time.Time      `gorm:"type:timestamp" json:"end_at"`
-	AgeStart int            `json:"age_start"`
-	AgeEnd   int            `json:"age_end"`
+	StartAt  CustomTime     `gorm:"type:timestamp" json:"start_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	EndAt    CustomTime     `gorm:"type:timestamp" json:"end_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	AgeStart int            `gorm:"type:integer" json:"age_start"`
+	AgeEnd   int            `gorm:"type:integer" json:"age_end"`
 	Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
 	Country  pq.StringArray `gorm:"type:text[]" json:"country"`
 	Platform pq.StringArray `gorm:"type:text[]" json:"platform"`
-	Version  int            `gorm:"type:integer" json:"version"` // Version log index(offset) in the redis stream
+	// Version, cant use sequence number, because the version is not continuous if we want to support update and delete
+	Version   int        `gorm:"index" json:"version"`
+	CreatedAt CustomTime `gorm:"type:timestamp" json:"created_at"`
 }
 
 func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
@@ -48,15 +50,15 @@ type GetAdsPageResponse struct {
 }
 
 type CreateAdRequest struct {
-	Title    string    `json:"title" binding:"required"`
-	Content  string    `json:"content" binding:"required"`
-	StartAt  time.Time `json:"start_at" binding:"required"`
-	EndAt    time.Time `json:"end_at" binding:"required"`
-	AgeStart int       `json:"age_start" binding:"required"`
-	AgeEnd   int       `json:"age_end" binding:"required"`
-	Gender   []string  `json:"gender" binding:"required"`
-	Country  []string  `json:"country" binding:"required"`
-	Platform []string  `json:"platform" binding:"required"`
+	Title    string     `json:"title" binding:"required"`
+	Content  string     `json:"content" binding:"required"`
+	StartAt  CustomTime `json:"start_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	EndAt    CustomTime `json:"end_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	AgeStart int        `json:"age_start" binding:"required" example:"18"`
+	AgeEnd   int        `json:"age_end" binding:"required" example:"65"`
+	Gender   []string   `json:"gender" binding:"required" example:"F"`
+	Country  []string   `json:"country" binding:"required" example:"US"`
+	Platform []string   `json:"platform" binding:"required" example:"ios"`
 }
 
 type CreateAdResponse struct {
