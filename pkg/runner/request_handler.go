@@ -2,6 +2,7 @@ package runner
 
 import (
 	"dcard-backend-2024/pkg/model"
+	"log"
 )
 
 type Runner struct {
@@ -55,6 +56,7 @@ func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
 }
 
 func (r *Runner) Start() {
+	log.Println("Runner started")
 	for {
 		select {
 		case req := <-r.RequestChan:
@@ -65,7 +67,7 @@ func (r *Runner) Start() {
 				// the create ad request is from the redis stream
 				r.handleCreateAdRequest(req.(*CreateAdRequest))
 			case *GetAdRequest:
-				r.handleGetAdRequest(req.(*GetAdRequest))
+				go r.handleGetAdRequest(req.(*GetAdRequest))
 			}
 		}
 	}

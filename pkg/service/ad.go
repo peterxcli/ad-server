@@ -4,8 +4,11 @@ import (
 	"context"
 	"dcard-backend-2024/pkg/model"
 	"dcard-backend-2024/pkg/runner"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"log"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -73,10 +76,12 @@ func (a *AdService) Run() error {
 	operation := func() error {
 		err := a.Restore()
 		if err != nil {
+			log.Printf("error restoring: %v", err)
 			return err
 		}
 		err = a.Subscribe()
 		if err != nil {
+			log.Printf("error subscribing: %v", err)
 			return err
 		}
 		return nil
@@ -142,6 +147,7 @@ func (a *AdService) Restore() (err error) {
 
 // Subscribe implements model.AdService.
 func (a *AdService) Subscribe() error {
+	log.Printf("subscribing to redis stream with offset: %d", a.Version)
 	ctx := context.Background()
 	lastID := fmt.Sprintf("0-%d", a.Version) // Assuming offset can be mapped directly to Redis Stream IDs
 	stopCh := make(chan struct{}, 1)
@@ -161,21 +167,28 @@ func (a *AdService) Subscribe() error {
 			// Reading from the stream
 			xReadArgs := &redis.XReadArgs{
 				Streams: []string{a.adStream, lastID},
-				Block:   0,
+				Block:   3 * time.Second,
 				Count:   10,
 			}
 			msgs, err := a.redis.XRead(ctx, xReadArgs).Result()
 			if err != nil {
-				// Handle error, for example, log or wait before retrying
-				time.Sleep(1 * time.Second)
+				// log.Printf("error reading from redis: %v", err)
 				continue
 			}
 			for _, msg := range msgs {
 				for _, m := range msg.Messages {
+					log.Printf("received message: %v\n", m)
 					ad := &runner.CreateAdRequest{}
-					ad.FromMap(m.Values) // assume data are valid
+					streamVersion, _ := strconv.ParseInt(strings.Split(m.ID, "-")[1], 10, 64)
+					if a.Version < int(streamVersion) {
+						a.Version = int(streamVersion)
+						lastID = m.ID
+					} else {
+						// our version is the same or higher than the stream version
+						continue
+					}
+					json.Unmarshal([]byte(m.Values["ad"].(string)), ad)
 					a.runner.RequestChan <- ad
-					lastID = m.ID // Update lastID to the latest message ID
 				}
 			}
 		}
@@ -198,9 +211,17 @@ func (a *AdService) registerOnShutdown(f func()) {
 // 3. publishes the ad into redis stream. (ensure the message sequence number is the same as the ad's version)
 //
 // 4. releases the lock
-func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad) (requestID string, err error) {
-	lock, err := a.locker.Obtain(ctx, a.lockKey, 0, nil)
+func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad, requestID string) (err error) {
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Printf("panic")
+		}
+	}()
+	ctx = context.Background()
+	lock, err := a.locker.Obtain(ctx, a.lockKey, 100*time.Millisecond, nil)
 	if err != nil {
+		log.Printf("error obtaining lock: %v", err)
 		return
 	}
 	defer lock.Release(ctx)
@@ -209,7 +230,7 @@ func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad) (
 		return
 	}
 	var maxVersion int
-	if err = txn.Raw("SELECT MAX(version) FROM ad").Scan(&maxVersion).Error; err != nil {
+	if err = txn.Raw("SELECT COALESCE(MAX(version), 0) FROM ads").Scan(&maxVersion).Error; err != nil {
 		txn.Rollback()
 		return
 	}
@@ -222,30 +243,41 @@ func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad) (
 	if err != nil {
 		return
 	}
-	requestID = uuid.New().String()
 	adReq := &runner.CreateAdRequest{
 		Request: runner.Request{RequestID: requestID},
 		Ad:      ad,
 	}
-	adReqMap, err := adReq.ToMap()
+	// adReqMap, err := adReq.ToMap()
+	adReqMapStr, err := json.Marshal(adReq)
+	// return requestID, nil
+	// log.Printf("adReqJsonStr: %s", adReqJsonStr)
 	if err != nil {
+		log.Printf("error marshalling ad request: %v", err)
 		return
 	}
 	_, err = a.redis.XAdd(ctx, &redis.XAddArgs{
-		Stream: a.adStream,
-		Values: adReqMap,
+		Stream:     a.adStream,
+		NoMkStream: false,
+		Approx:     false,
+		MaxLen:     100000,
+		Values:     []interface{}{"ad", string(adReqMapStr)},
+		ID:         fmt.Sprintf("0-%d", ad.Version),
 	}).Result()
 	if err != nil {
+		log.Printf("error publishing to redis: %v", err)
 		return
 	}
-	return requestID, nil
+	return nil
 }
 
 // CreateAd implements model.AdService.
 func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, err error) {
 	a.wg.Add(1)
 	defer a.wg.Done()
-	requestID, err := a.storeAndPublishWithLock(ctx, ad)
+	requestID := uuid.New().String()
+	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
+	defer delete(a.runner.ResponseChan, requestID)
+	err = a.storeAndPublishWithLock(ctx, ad, requestID)
 	if err != nil {
 		return "", err
 	}
@@ -268,6 +300,10 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 	defer a.wg.Done()
 
 	requestID := uuid.New().String()
+
+	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
+	defer delete(a.runner.ResponseChan, requestID)
+
 	a.runner.RequestChan <- &runner.GetAdRequest{
 		Request:      runner.Request{RequestID: requestID},
 		GetAdRequest: req,
