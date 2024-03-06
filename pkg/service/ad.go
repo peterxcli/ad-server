@@ -81,9 +81,9 @@ func (a *AdService) Run() error {
 		return nil
 	}
 
-	operationBackoff := backoff.NewExponentialBackOff()
-	currentRetry := 0
 	maxRetry := 5
+	operationBackoff := backoff.WithMaxRetries(backoff.NewExponentialBackOff(), uint64(maxRetry))
+
 	for a.shutdown.Load() == false {
 		select {
 		case <-stopCh:
@@ -91,13 +91,8 @@ func (a *AdService) Run() error {
 		default:
 			err := backoff.Retry(operation, operationBackoff)
 			if err != nil {
-				currentRetry++
-				if currentRetry > maxRetry {
-					return fmt.Errorf("max retry reached: %w", err)
-				}
-			} else {
-				currentRetry = 0
-				return nil
+				log.Printf("error running: %v", err)
+				return err
 			}
 		}
 	}
