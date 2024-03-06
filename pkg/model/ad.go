@@ -80,5 +80,5 @@ type InMemoryStore interface {
 	CreateAd(ad *Ad) (string, error)
 	GetAds(req *GetAdRequest) ([]*Ad, int, error)
 	// Restore the ads from the db, and return the highest version in the store
-	CreateBatchAds(ads []*Ad) (version int, err error)
+	CreateBatchAds(ads []*Ad) (err error)
 }

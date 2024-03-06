@@ -44,7 +44,6 @@ type InMemoryStoreImpl struct {
 	// use the Version as redis stream's message sequence number, and also store it as ad's version
 	// then if the rebooted service's version is lower than the Version, it will fetch the latest ads from the db
 	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
-	Version          int
 	ads              map[string]*model.Ad
 	adsByCountry     map[string]mapset.Set[string]
 	adsByGender      map[string]mapset.Set[string]
@@ -72,7 +71,7 @@ func NewInMemoryStore() model.InMemoryStore {
 // because if we want to support update operation restore from the snapshot,
 // the version must not be continuous
 // (only used in the snapshot restore)
-func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err error) {
+func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (err error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -82,9 +81,6 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err er
 	})
 
 	for _, ad := range ads {
-		// Update the version
-		s.Version = max(s.Version, ad.Version)
-
 		s.ads[ad.ID.String()] = ad
 
 		// Update indexes
@@ -107,19 +103,12 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (version int, err er
 			s.adsByPlatform[platform].Add(ad.ID.String())
 		}
 	}
-	return s.Version, nil
+	return nil
 }
 
 func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-
-	if ad.Version != s.Version+1 {
-		return "", ErrInvalidVersion
-	}
-
-	// Update the version
-	s.Version = ad.Version
 
 	s.ads[ad.ID.String()] = ad
 

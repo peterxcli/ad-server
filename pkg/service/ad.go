@@ -295,5 +295,6 @@ func NewAdService(runner *runner.Runner, db *gorm.DB, redis *redis.Client, locke
 		onShutdown: make([]func(), 0),
 		adStream:   "ad",
 		shutdown:   atomic.Bool{},
+		Version:    0,
 	}
 }
