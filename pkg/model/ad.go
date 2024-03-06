@@ -2,7 +2,6 @@ package model
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -71,8 +70,8 @@ type AdService interface {
 	CreateAd(ctx context.Context, ad *Ad) (adID string, er error)
 	GetAds(ctx context.Context, req *GetAdRequest) ([]*Ad, int, error)
 	// Subscribe to the redis stream
-	Subscribe(offset int) error
-	Restore() (version int, err error)
+	Subscribe() error
+	Restore() error
 	Run() error
 	Shutdown(ctx context.Context) error
 }

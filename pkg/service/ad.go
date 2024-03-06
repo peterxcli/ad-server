@@ -34,6 +34,7 @@ type AdService struct {
 	mu         sync.Mutex
 	wg         sync.WaitGroup
 	onShutdown []func()
+	Version    int // Version is the latest version of the ad
 }
 
 // Shutdown implements model.AdService.
@@ -70,11 +71,11 @@ func (a *AdService) Run() error {
 	})
 
 	operation := func() error {
-		version, err := a.Restore()
+		err := a.Restore()
 		if err != nil {
 			return err
 		}
-		err = a.Subscribe(version)
+		err = a.Subscribe()
 		if err != nil {
 			return err
 		}
@@ -102,21 +103,47 @@ func (a *AdService) Run() error {
 // Restore restores the latest version of an ad from the database.
 // It returns the version number of the restored ad and any error encountered.
 // The error could be ErrRecordNotFound if no ad is found or a DB connection error.
-func (a *AdService) Restore() (version int, err error) {
-	err = a.db.Model(&model.Ad{}).Select("MAX(version)").Scan(&version).Error
-	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		return 0, nil
-	case err != nil:
-		return 0, err
+func (a *AdService) Restore() (err error) {
+	txn := a.db.Begin()
+	err = txn.Raw("SELECT COALESCE(MAX(version), 0) FROM ads").Scan(&a.Version).Error
+	if err != nil {
+		return err
 	}
-	return version, nil
+	var ads []*model.Ad
+	err = txn.Find(&ads).Error
+	if err != nil {
+		return err
+	}
+	err = txn.Commit().Error
+	if err != nil {
+		return err
+	}
+	requestID := uuid.New().String()
+	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
+	defer delete(a.runner.ResponseChan, requestID)
+	a.runner.RequestChan <- &runner.CreateBatchAdRequest{
+		Request: runner.Request{RequestID: requestID},
+		Ads:     ads,
+	}
+
+	select {
+	case resp := <-a.runner.ResponseChan[requestID]:
+		if resp, ok := resp.(*runner.CreateAdResponse); ok {
+			if resp.Err == nil {
+				log.Printf("Restored version: %d successfully\n", a.Version)
+			}
+			return resp.Err
+		}
+	case <-time.After(3 * time.Second):
+		return ErrTimeout
+	}
+	return ErrUnknown
 }
 
 // Subscribe implements model.AdService.
-func (a *AdService) Subscribe(offset int) error {
+func (a *AdService) Subscribe() error {
 	ctx := context.Background()
-	lastID := fmt.Sprintf("%d-0", offset) // Assuming offset can be mapped directly to Redis Stream IDs
+	lastID := fmt.Sprintf("0-%d", a.Version) // Assuming offset can be mapped directly to Redis Stream IDs
 	stopCh := make(chan struct{}, 1)
 
 	a.wg.Add(1)
