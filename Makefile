@@ -47,6 +47,12 @@ stage-up: ## Start the container for stage environment
 test: ## Run the tests
 	./script/run.sh dev test
 
+coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+	go tool cover -html=coverage.out
+
 run: ## Run the application
 	./script/run.sh dev run
 
