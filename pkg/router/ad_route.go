@@ -9,5 +9,5 @@ func RegisterAdRouter(app *bootstrap.Application, controller *controller.AdContr
 	r := app.Engine.Group("/api/v1/ad")
 
 	r.POST("", controller.CreateAd)
-	r.GET("/", controller.GetAd)
+	r.GET("", controller.GetAd)
 }

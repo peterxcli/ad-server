@@ -72,6 +72,13 @@ func (app *Application) Run(services *Services) {
 	serverErrors := make(chan error, 1)
 
 	go func() {
+		log.Printf("Background Services are running...")
+		for err := range services.Run() {
+			serverErrors <- err
+		}
+	}()
+
+	go func() {
 		log.Printf("Server is running on port %d", app.Env.Server.Port)
 		serverErrors <- srv.ListenAndServe()
 	}()
@@ -81,12 +88,19 @@ func (app *Application) Run(services *Services) {
 
 	select {
 	case err := <-serverErrors:
-		log.Fatalf("Error starting server: %v", err)
-
+		log.Printf("Error from server: %v\n", err)
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		log.Println("Shutting down the background services and server...")
+		err = services.Shutdown(ctx)
+		if err != nil {
+			log.Printf("Could not stop services: %v\n", err)
+		}
+		os.Exit(1)
 	case <-shutdown:
 		log.Println("Shutting down the server...")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		err := srv.Shutdown(ctx)
@@ -98,7 +112,7 @@ func (app *Application) Run(services *Services) {
 			}
 		}
 
-		err = services.AdService.Shutdown(ctx)
+		err = services.Shutdown(ctx)
 		if err != nil {
 			log.Fatalf("Could not stop ad service: %v", err)
 		}

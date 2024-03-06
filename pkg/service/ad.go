@@ -59,6 +59,7 @@ func (a *AdService) Shutdown(ctx context.Context) error {
 
 // Run implements model.AdService.
 func (a *AdService) Run() error {
+	go a.runner.Start() // Start the runner
 	stopCh := make(chan struct{}, 1)
 
 	a.wg.Add(1)
