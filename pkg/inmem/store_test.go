@@ -56,8 +56,8 @@ func shuffle(arr []string, inplace bool) []string {
 }
 
 func NewMockAd() *model.Ad {
-	startOffset := time.Duration(randRange(-7, 0)) * 24 * time.Hour // Random start date within the last week
-	endOffset := time.Duration(randRange(1, 7)) * 24 * time.Hour    // Random end date within the next week
+	startOffset := time.Duration(randRange(-7, 0)) * 24 * time.Hour
+	endOffset := time.Duration(randRange(1, 7)) * 24 * time.Hour
 
 	// Random age range ensuring AgeStart is less than AgeEnd
 	ageStart := randRange(18, 63)
@@ -122,6 +122,26 @@ func TestGetAds(t *testing.T) {
 	assert.Len(t, ads, total)
 }
 
+func TestGetNoAds(t *testing.T) {
+	store := NewInMemoryStore()
+	ad := NewMockAd()
+	ad.Version = 1
+	_, err := store.CreateAd(ad)
+	assert.Nil(t, err)
+
+	request := &model.GetAdRequest{
+		Age:      randRange(ad.AgeStart, ad.AgeEnd),
+		Country:  ad.Country[0],
+		Gender:   ad.Gender[0],
+		Platform: "1",
+		Offset:   0,
+		Limit:    10,
+	}
+
+	_, _, err = store.GetAds(request)
+	assert.NotNil(t, err)
+}
+
 func TestCreateBatchAds(t *testing.T) {
 	store := NewInMemoryStore()
 	ads := []*model.Ad{}
@@ -182,7 +202,7 @@ func TestReadAdsPerformanceAndAccuracy(t *testing.T) {
 	store := NewInMemoryStore()
 
 	// Populate the store with a batch of ads
-	batchSize := 3000 // Adjust based on the desired test load
+	batchSize := 3000
 	for i := 0; i < batchSize; i++ {
 		ad := NewMockAd()
 		ad.Version = i + 1
@@ -195,6 +215,45 @@ func TestReadAdsPerformanceAndAccuracy(t *testing.T) {
 	for i := 0; i < queryCount; i++ {
 		testFilters = append(testFilters, generateRandomGetAdRequest())
 	}
+	testFilters = append(testFilters,
+		// Only Country has a value
+		model.GetAdRequest{
+			Age:      18,
+			Country:  "US",
+			Gender:   "",
+			Platform: "",
+			Offset:   0,
+			Limit:    10,
+		},
+		// Only Gender has a value
+		model.GetAdRequest{
+			Age:      18,
+			Country:  "",
+			Gender:   "F",
+			Platform: "",
+			Offset:   0,
+			Limit:    10,
+		},
+		// Only Platform has a value
+		model.GetAdRequest{
+			Age:      18,
+			Country:  "",
+			Gender:   "",
+			Platform: "ios",
+			Offset:   0,
+			Limit:    10,
+		},
+		// no value
+		model.GetAdRequest{
+			Age:      18,
+			Country:  "",
+			Gender:   "",
+			Platform: "",
+			Offset:   0,
+			Limit:    10,
+		},
+	)
+
 	start := time.Now()
 	wg := sync.WaitGroup{}
 

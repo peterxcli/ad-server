@@ -200,20 +200,40 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	}
 
 	if req.Country != "" {
-		candidateIDs = s.adsByCountry[req.Country]
+		if _, ok := s.adsByCountry[req.Country]; ok {
+			candidateIDs = s.adsByCountry[req.Country]
+		} else {
+			candidateIDs = mapset.NewSet[string]()
+		}
 	}
 	if req.Gender != "" {
 		if candidateIDs == nil {
-			candidateIDs = s.adsByGender[req.Gender]
+			if _, ok := s.adsByGender[req.Gender]; ok {
+				candidateIDs = s.adsByGender[req.Gender]
+			} else {
+				candidateIDs = mapset.NewSet[string]()
+			}
 		} else {
-			candidateIDs = candidateIDs.Intersect(s.adsByGender[req.Gender])
+			if _, ok := s.adsByGender[req.Gender]; ok {
+				candidateIDs = candidateIDs.Intersect(s.adsByGender[req.Gender])
+			} else {
+				candidateIDs = mapset.NewSet[string]()
+			}
 		}
 	}
 	if req.Platform != "" {
 		if candidateIDs == nil {
-			candidateIDs = s.adsByPlatform[req.Platform]
+			if _, ok := s.adsByPlatform[req.Platform]; ok {
+				candidateIDs = s.adsByPlatform[req.Platform]
+			} else {
+				candidateIDs = mapset.NewSet[string]()
+			}
 		} else {
-			candidateIDs = candidateIDs.Intersect(s.adsByPlatform[req.Platform])
+			if _, ok := s.adsByPlatform[req.Platform]; ok {
+				candidateIDs = candidateIDs.Intersect(s.adsByPlatform[req.Platform])
+			} else {
+				candidateIDs = mapset.NewSet[string]()
+			}
 		}
 	}
 
