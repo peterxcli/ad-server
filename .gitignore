@@ -6,6 +6,7 @@ bin/
 
 # Docker volumes
 docker/volumes/
+.volumes
 
 # Environment
 .env*
