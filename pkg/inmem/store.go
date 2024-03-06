@@ -144,8 +144,8 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	}
 	err := s.adByTimeInterval.Insert(
 		&IntInterval{
-			Start:   int(ad.StartAt.Unix()),
-			End:     int(ad.EndAt.Unix()),
+			Start:   int(ad.StartAt.T().Unix()),
+			End:     int(ad.EndAt.T().Unix()),
 			UID:     uintptr(unsafe.Pointer(ad)),
 			Payload: ad.ID.String(),
 		}, false)
@@ -239,7 +239,7 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	// Filter by time and age, and apply pagination
 	for _, id := range candidateIDs.ToSlice() {
 		ad := s.ads[id]
-		if ad.StartAt.Before(now) && ad.EndAt.After(now) && ad.AgeStart <= req.Age && req.Age <= ad.AgeEnd {
+		if ad.StartAt.T().Before(now) && ad.EndAt.T().After(now) && ad.AgeStart <= req.Age && req.Age <= ad.AgeEnd {
 			ads = append(ads, ad)
 		}
 	}
