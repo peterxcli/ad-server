@@ -2,9 +2,8 @@ package model
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"errors"
-	"strings"
+	"fmt"
 	"time"
 )
 
@@ -14,20 +13,28 @@ func (ct CustomTime) T() time.Time {
 	return time.Time(ct)
 }
 
+const ctLayout = "2006-01-02 15:04:05"
+
+func (ct CustomTime) MarshalJSON() ([]byte, error) {
+	t := time.Time(ct)
+	if t.IsZero() {
+		return []byte("null"), nil
+	}
+	return []byte(fmt.Sprintf("\"%s\"", t.Format(ctLayout))), nil
+}
+
 func (ct *CustomTime) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), "\"")
-	t, err := time.Parse("2006-01-02 15:04:05", s)
+	s := string(b)
+	if s == "null" {
+		*ct = CustomTime(time.Time{})
+		return nil
+	}
+	t, err := time.Parse(`"`+ctLayout+`"`, s)
 	if err != nil {
 		return err
 	}
 	*ct = CustomTime(t)
-
 	return nil
-}
-
-func (ct *CustomTime) MarshalJSON() ([]byte, error) {
-	formattedTime := ct.T().Format("2006-01-02 15:04:05")
-	return json.Marshal(formattedTime)
 }
 
 func (ct CustomTime) Value() (driver.Value, error) {
