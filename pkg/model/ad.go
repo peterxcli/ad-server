@@ -39,8 +39,8 @@ type GetAdRequest struct {
 	Gender   string `form:"gender" binding:"omitempty"`
 	Platform string `form:"platform" binding:"omitempty"`
 
-	Offset int `form:"offset" binding:"omitempty"`
-	Limit  int `form:"limit" binding:"omitempty"`
+	Offset int `form:"offset,default=0" binding:"omitempty"`
+	Limit  int `form:"limit,default=10" binding:"omitempty"`
 }
 
 type GetAdsPageResponse struct {
