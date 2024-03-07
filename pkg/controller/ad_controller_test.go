@@ -143,7 +143,10 @@ func TestAdController_GetAd(t *testing.T) {
 	}
 }
 func TestAdController_CreateAd(t *testing.T) {
-	// _, services, mocks := boot()
+	// FIXME: redis mock 好像在 xread & redis lock 會壞掉 qq.
+	// 1. xread 讀不到 xadd 發出的訊息
+	// 2. redis lock release 的時候會一直說 lock not held
+	// 可是換成真的 redis 就沒問題了
 	type fields struct {
 		adService model.AdService
 	}
