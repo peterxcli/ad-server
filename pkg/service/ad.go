@@ -212,19 +212,20 @@ func (a *AdService) registerOnShutdown(f func()) {
 //
 // 4. releases the lock
 func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad, requestID string) (err error) {
-	defer func() {
-		err := recover()
-		if err != nil {
-			log.Printf("panic")
-		}
-	}()
 	ctx = context.Background()
-	lock, err := a.locker.Obtain(ctx, a.lockKey, 100*time.Millisecond, nil)
+	lock, err := a.locker.Obtain(ctx, a.lockKey, 100*time.Millisecond, &redislock.Options{
+		RetryStrategy: redislock.LimitRetry(redislock.ExponentialBackoff(1*time.Millisecond, 5*time.Millisecond), 10),
+	})
 	if err != nil {
 		log.Printf("error obtaining lock: %v", err)
 		return
 	}
-	defer lock.Release(ctx)
+	defer func() {
+		err := lock.Release(ctx)
+		if err != nil {
+			log.Printf("error releasing lock: %v", err)
+		}
+	}()
 	txn := a.db.Begin()
 	if err = txn.Error; err != nil {
 		return
