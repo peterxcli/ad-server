@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisEnv struct {
-	Host     string `env:"HOST"`
-	Port     uint   `env:"PORT"`
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     uint   `env:"PORT" envDefault:"6379"`
 	Password string `env:"PASSWORD" envDefault:""`
 }
 
@@ -31,4 +32,9 @@ func NewCache(env *Env) *redis.Client {
 		panic(pong + err.Error())
 	}
 	return rdb
+}
+
+func NewMockCache() *redis.Client {
+	cache, _ := redismock.NewClientMock()
+	return cache
 }

@@ -62,6 +62,39 @@ func App(opts ...AppOpts) *Application {
 	return app
 }
 
+func NewTestApp(opts ...AppOpts) *Application {
+	env := NewEnv()
+	db := NewMockDB()
+	cache := NewMockCache()
+	redisLock := NewRdLock(cache)
+	engine := gin.Default()
+	gin.SetMode(gin.TestMode)
+	adInMemStore := inmem.NewInMemoryStore()
+	runner := runner.NewRunner(adInMemStore)
+
+	// Set timezone
+	tz, err := time.LoadLocation(env.Server.TimeZone)
+	if err != nil {
+		log.Fatal(err)
+	}
+	time.Local = tz
+
+	app := &Application{
+		Env:       env,
+		Conn:      db,
+		Cache:     cache,
+		Engine:    engine,
+		RedisLock: redisLock,
+		Runner:    runner,
+	}
+
+	for _, opt := range opts {
+		opt(app)
+	}
+
+	return app
+}
+
 // Run the application
 func (app *Application) Run(services *Services) {
 	srv := &http.Server{

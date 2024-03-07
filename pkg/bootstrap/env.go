@@ -11,7 +11,7 @@ type Env struct {
 	Redis  RedisEnv `envPrefix:"REDIS_"`
 	Server Server   `envPrefix:"SERVER_"`
 	JWT    JWTEnv   `envPrefix:"JWT_"`
-	Domain string   `env:"DOMAIN"`
+	Domain string   `env:"DOMAIN" envDefault:"localhost"`
 }
 
 func NewEnv() *Env {

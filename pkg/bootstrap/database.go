@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
@@ -11,12 +12,12 @@ import (
 )
 
 type DBEnv struct {
-	Kind     string `env:"KIND"`
-	Host     string `env:"HOST"`
-	Port     uint   `env:"PORT"`
-	Username string `env:"USERNAME"`
-	Password string `env:"PASSWORD"`
-	Database string `env:"DATABASE"`
+	Kind     string `env:"KIND" envDefault:"postgres"`
+	Host     string `env:"HOST" envDefault:"localhost"`
+	Port     uint   `env:"PORT" envDefault:"5432"`
+	Username string `env:"USERNAME" envDefault:"postgres"`
+	Password string `env:"PASSWORD" envDefault:"password"`
+	Database string `env:"DATABASE" envDefault:"postgres"`
 }
 
 func (env *DBEnv) Dialect(kind string) gorm.Dialector {
@@ -51,4 +52,20 @@ func NewDB(env *Env) *gorm.DB {
 	}
 
 	return db
+}
+
+func NewMockDB() *gorm.DB {
+	db, _, err := sqlmock.New()
+	if err != nil {
+		log.Fatalf("Failed to open mock database: %v", err)
+	}
+	dialector := postgres.New(postgres.Config{
+		Conn:       db,
+		DriverName: "postgres",
+	})
+	gdb, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		log.Fatalf("Failed to open mock database: %v", err)
+	}
+	return gdb
 }
