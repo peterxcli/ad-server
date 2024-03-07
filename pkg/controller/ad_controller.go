@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"dcard-backend-2024/pkg/inmem"
 	"dcard-backend-2024/pkg/model"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -43,7 +45,11 @@ func (ac *AdController) GetAd(c *gin.Context) {
 	// TODO: validate the query parameters
 
 	ads, total, err := ac.adService.GetAds(c, &req)
-	if err != nil {
+	switch {
+	case errors.Is(err, inmem.ErrNoAdsFound):
+		c.JSON(http.StatusNotFound, model.Response{Msg: err.Error()})
+		return
+	case err != nil:
 		c.JSON(http.StatusInternalServerError, model.Response{Msg: err.Error()})
 		return
 	}

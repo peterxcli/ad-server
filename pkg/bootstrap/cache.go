@@ -34,7 +34,7 @@ func NewCache(env *Env) *redis.Client {
 	return rdb
 }
 
-func NewMockCache() *redis.Client {
-	cache, _ := redismock.NewClientMock()
-	return cache
+func NewMockCache() (*redis.Client, redismock.ClientMock) {
+	cache, cacheMock := redismock.NewClientMock()
+	return cache, cacheMock
 }

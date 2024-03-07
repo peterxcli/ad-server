@@ -13,8 +13,10 @@ import (
 	"time"
 	_ "time/tzdata"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/bsm/redislock"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redismock/v9"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -62,10 +64,15 @@ func App(opts ...AppOpts) *Application {
 	return app
 }
 
-func NewTestApp(opts ...AppOpts) *Application {
+type Mocks struct {
+	CacheMock redismock.ClientMock
+	DBMock    sqlmock.Sqlmock
+}
+
+func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	env := NewEnv()
-	db := NewMockDB()
-	cache := NewMockCache()
+	db, dbMock := NewMockDB()
+	cache, cacheMock := NewMockCache()
 	redisLock := NewRdLock(cache)
 	engine := gin.Default()
 	gin.SetMode(gin.TestMode)
@@ -88,11 +95,16 @@ func NewTestApp(opts ...AppOpts) *Application {
 		Runner:    runner,
 	}
 
+	mocks := &Mocks{
+		CacheMock: cacheMock,
+		DBMock:    dbMock,
+	}
+
 	for _, opt := range opts {
 		opt(app)
 	}
 
-	return app
+	return app, mocks
 }
 
 // Run the application
@@ -107,6 +119,7 @@ func (app *Application) Run(services *Services) {
 	go func() {
 		log.Printf("Background Services are running...")
 		for err := range services.Run() {
+			log.Printf("Error from background service: %v\n", err)
 			serverErrors <- err
 		}
 	}()

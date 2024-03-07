@@ -54,8 +54,8 @@ func NewDB(env *Env) *gorm.DB {
 	return db
 }
 
-func NewMockDB() *gorm.DB {
-	db, _, err := sqlmock.New()
+func NewMockDB() (*gorm.DB, sqlmock.Sqlmock) {
+	db, mock, err := sqlmock.New()
 	if err != nil {
 		log.Fatalf("Failed to open mock database: %v", err)
 	}
@@ -67,5 +67,5 @@ func NewMockDB() *gorm.DB {
 	if err != nil {
 		log.Fatalf("Failed to open mock database: %v", err)
 	}
-	return gdb
+	return gdb, mock
 }
