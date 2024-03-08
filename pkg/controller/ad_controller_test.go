@@ -198,7 +198,7 @@ func TestAdController_CreateAd(t *testing.T) {
 			ac := &AdController{
 				adService: tt.fields.adService,
 			}
-			mocks.CacheMock.Regexp().ExpectEvalSha(".", []string{"."}, ".", ".", ".").SetVal(".")
+			mocks.CacheMock.Regexp().ExpectEvalSha(".", []string{"lock:ad"}, ".", ".", ".").SetVal(".")
 			mocks.DBMock.ExpectBegin()
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
 				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
@@ -233,7 +233,7 @@ func TestAdController_CreateAd(t *testing.T) {
 			}).SetVal(fmt.Sprintf("0-%d", tt.args.expectVersion))
 			mocks.CacheMock.CustomMatch(func(expected, actual []interface{}) error {
 				return nil
-			}).ExpectEvalSha(".", []string{"."}, ".").SetVal(".")
+			}).ExpectEvalSha(".", []string{"lock:ad"}, ".").SetVal(".")
 
 			ac.CreateAd(c)
 			assert.Equal(t, http.StatusInternalServerError, w.Code)
