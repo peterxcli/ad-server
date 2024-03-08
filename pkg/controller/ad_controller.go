@@ -42,8 +42,6 @@ func (ac *AdController) GetAd(c *gin.Context) {
 		return
 	}
 
-	// TODO: validate the query parameters
-
 	ads, total, err := ac.adService.GetAds(c, &req)
 	switch {
 	case errors.Is(err, inmem.ErrNoAdsFound):
@@ -74,8 +72,6 @@ func (ac *AdController) CreateAd(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, model.Response{Msg: err.Error()})
 		return
 	}
-
-	// TODO: validate the ad object
 
 	adID, err := ac.adService.CreateAd(c,
 		&model.Ad{

@@ -33,14 +33,14 @@ func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
 
 // StartAt < Now() < EndAt
 type GetAdRequest struct {
-	// AgeStart < Age < AgeEnd
-	Age      int    `form:"age" binding:"omitempty"`
+	// AgeStart <= Age <= AgeEnd
+	Age      int    `form:"age" binding:"omitempty,gt=0"`
 	Country  string `form:"country" binding:"omitempty"`
-	Gender   string `form:"gender" binding:"omitempty"`
-	Platform string `form:"platform" binding:"omitempty"`
+	Gender   string `form:"gender" binding:"omitempty,oneof=M F"`
+	Platform string `form:"platform" binding:"omitempty,oneof=android ios web"`
 
-	Offset int `form:"offset,default=0" binding:"omitempty"`
-	Limit  int `form:"limit,default=10" binding:"omitempty"`
+	Offset int `form:"offset,default=0" binding:"min=0"`
+	Limit  int `form:"limit,default=10" binding:"min=1,max=100"`
 }
 
 type GetAdsPageResponse struct {
@@ -49,15 +49,15 @@ type GetAdsPageResponse struct {
 }
 
 type CreateAdRequest struct {
-	Title    string     `json:"title" binding:"required"`
+	Title    string     `json:"title" binding:"required,min=5,max=100"`
 	Content  string     `json:"content" binding:"required"`
 	StartAt  CustomTime `json:"start_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	EndAt    CustomTime `json:"end_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	AgeStart int        `json:"age_start" binding:"required" example:"18"`
+	EndAt    CustomTime `json:"end_at" binding:"required,gtfield=StartAt" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	AgeStart int        `json:"age_start" binding:"gtefield=AgeStart,lte=100" example:"18"`
 	AgeEnd   int        `json:"age_end" binding:"required" example:"65"`
-	Gender   []string   `json:"gender" binding:"required" example:"F"`
+	Gender   []string   `json:"gender" binding:"required,dive,oneof=M F" example:"F"`
 	Country  []string   `json:"country" binding:"required" example:"US"`
-	Platform []string   `json:"platform" binding:"required" example:"ios"`
+	Platform []string   `json:"platform" binding:"required,dive,oneof=android ios web" example:"ios"`
 }
 
 type CreateAdResponse struct {
