@@ -186,6 +186,115 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 		})
 	}
 }
+
+func TestAdService_CreateAd(t *testing.T) {
+	type fields struct {
+		runner   *runner.Runner
+		db       *gorm.DB
+		redis    *redis.Client
+		locker   *redislock.Client
+		lockKey  string
+		adStream string
+	}
+	type args struct {
+		ctx context.Context
+		ad  *model.Ad
+	}
+	tests := []struct {
+		name     string
+		fields   fields
+		args     args
+		wantAdID string
+		wantErr  bool
+	}{
+		{
+			name: "test store and publish with lock",
+			fields: fields{
+				runner:   app.Runner,
+				db:       app.Conn,
+				redis:    app.Cache,
+				locker:   app.RedisLock,
+				lockKey:  lockKey + uuid.New().String(),
+				adStream: adStream + uuid.New().String(),
+			},
+			args: args{
+				ctx: context.Background(),
+				ad: &model.Ad{
+					ID:       uuid.New(),
+					Title:    "test",
+					Content:  "test",
+					StartAt:  model.CustomTime(time.Now()),
+					EndAt:    model.CustomTime(time.Now()),
+					AgeStart: 0,
+					AgeEnd:   100,
+					Gender:   []string{"M"},
+					Country:  []string{"TW"},
+					Platform: []string{"ios"},
+					Version:  1,
+				},
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AdService{
+				runner:   tt.fields.runner,
+				db:       tt.fields.db,
+				redis:    tt.fields.redis,
+				locker:   tt.fields.locker,
+				lockKey:  tt.fields.lockKey,
+				adStream: tt.fields.adStream,
+			}
+			mocks.CacheMock.Regexp().ExpectEvalSha(".", []string{tt.fields.lockKey}, ".", ".", ".").SetVal(".")
+			mocks.DBMock.ExpectBegin()
+			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
+			mocks.DBMock.ExpectExec("^INSERT INTO \"ads\".+$").
+				WithArgs(
+					AnyString{},
+					tt.args.ad.Title,
+					tt.args.ad.Content,
+					AnyTime{},
+					AnyTime{},
+					tt.args.ad.AgeStart,
+					tt.args.ad.AgeEnd,
+					pq.StringArray(tt.args.ad.Gender),
+					pq.StringArray(tt.args.ad.Country),
+					pq.StringArray(tt.args.ad.Platform),
+					tt.args.ad.Version,
+					AnyTime{},
+				).WillReturnResult(sqlmock.NewResult(1, 1))
+			mocks.DBMock.ExpectCommit()
+			requestBytes, err := json.Marshal(runner.CreateAdRequest{
+				Request: runner.Request{RequestID: "???????????"},
+				Ad:      tt.args.ad,
+			})
+			assert.Nil(t, err)
+			mocks.CacheMock.CustomMatch(func(expected, actual []interface{}) error {
+				return nil
+			}).ExpectXAdd(&redis.XAddArgs{
+				Stream:     tt.fields.adStream,
+				NoMkStream: false,
+				Approx:     false,
+				MaxLen:     100000,
+				Values:     []interface{}{"ad", string(requestBytes)},
+				ID:         fmt.Sprintf("0-%d", tt.args.ad.Version),
+			}).SetVal(fmt.Sprintf("0-%d", tt.args.ad.Version))
+			mocks.CacheMock.CustomMatch(func(expected, actual []interface{}) error {
+				return nil
+			}).ExpectEvalSha(".", []string{tt.fields.lockKey}, ".").SetVal(".")
+			gotAdID, err := a.CreateAd(tt.args.ctx, tt.args.ad)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AdService.CreateAd() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if gotAdID != tt.wantAdID {
+				t.Errorf("AdService.CreateAd() = %v, want %v", gotAdID, tt.wantAdID)
+			}
+		})
+	}
+}
 	type fields struct {
 		runner     *runner.Runner
 		db         *gorm.DB
@@ -195,6 +304,17 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 		adStream   string
 		onShutdown []func()
 		Version    int
+	}
+
+func TestAdService_Shutdown(t *testing.T) {
+	type fields struct {
+		runner   *runner.Runner
+		db       *gorm.DB
+		redis    *redis.Client
+		locker   *redislock.Client
+		lockKey  string
+		adStream string
+		Version  int
 	}
 	type args struct {
 		timeout time.Duration
