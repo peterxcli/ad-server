@@ -11,15 +11,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.21'
+
       - name: Generate Swagger UI
         uses: Legion2/swagger-ui-action@v1
         with:
-          output: swagger-ui
+          output: public/docs
           spec-file: docs/swagger.json
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test and Coverage
+        run: |
+          mkdir -p public/coverage
+          go test ./... -coverprofile=coverage.txt
+          go tool cover -html=coverage.txt -o public/coverage/index.html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: swagger-ui
+          publish_dir: ./public
