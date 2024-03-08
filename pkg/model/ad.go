@@ -35,7 +35,7 @@ func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
 type GetAdRequest struct {
 	// AgeStart <= Age <= AgeEnd
 	Age      int    `form:"age" binding:"omitempty,gt=0"`
-	Country  string `form:"country" binding:"omitempty"`
+	Country  string `form:"country" binding:"omitempty,iso3166_1_alpha2"`
 	Gender   string `form:"gender" binding:"omitempty,oneof=M F"`
 	Platform string `form:"platform" binding:"omitempty,oneof=android ios web"`
 
@@ -56,7 +56,7 @@ type CreateAdRequest struct {
 	AgeStart int        `json:"age_start" binding:"gtefield=AgeStart,lte=100" example:"18"`
 	AgeEnd   int        `json:"age_end" binding:"required" example:"65"`
 	Gender   []string   `json:"gender" binding:"required,dive,oneof=M F" example:"F"`
-	Country  []string   `json:"country" binding:"required" example:"US"`
+	Country  []string   `json:"country" binding:"required,dive,iso3166_1_alpha2" example:"TW"`
 	Platform []string   `json:"platform" binding:"required,dive,oneof=android ios web" example:"ios"`
 }
 
