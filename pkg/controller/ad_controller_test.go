@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 
@@ -100,9 +101,10 @@ func TestAdController_GetAd(t *testing.T) {
 		requestQuery url.Values
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name         string
+		fields       fields
+		args         args
+		expectStatus int
 	}{
 		{
 			name: "Test GetAd",
@@ -120,6 +122,43 @@ func TestAdController_GetAd(t *testing.T) {
 					"limit":    {"10"},
 				},
 			},
+			expectStatus: http.StatusNotFound,
+		},
+		{
+			name: "Test GetAd BadRequest: invalid age",
+			fields: fields{
+				adService: services.AdService,
+			},
+			args: args{
+				c: nil,
+				requestQuery: url.Values{
+					"country":  {"TW"},
+					"gender":   {"M"},
+					"platform": {"ios"},
+					"age":      {"-1"},
+					"offset":   {"0"},
+					"limit":    {"10"},
+				},
+			},
+			expectStatus: http.StatusBadRequest,
+		},
+		{
+			name: "Test GetAd BadRequest: invalid enum",
+			fields: fields{
+				adService: services.AdService,
+			},
+			args: args{
+				c: nil,
+				requestQuery: url.Values{
+					"country":  {"TW"},
+					"gender":   {"???"},
+					"platform": {"meow"},
+					"age":      {"18"},
+					"offset":   {"0"},
+					"limit":    {"10"},
+				},
+			},
+			expectStatus: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -137,7 +176,7 @@ func TestAdController_GetAd(t *testing.T) {
 				adService: tt.fields.adService,
 			}
 			ac.GetAd(c)
-			assert.Equal(t, http.StatusNotFound, w.Code)
+			assert.Equal(t, tt.expectStatus, w.Code)
 			t.Logf("Response: %s", w.Body.String())
 		})
 	}
@@ -156,9 +195,10 @@ func TestAdController_CreateAd(t *testing.T) {
 		expectVersion int
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name         string
+		fields       fields
+		args         args
+		expectStatus int
 	}{
 		{
 			name: "Test CreateAd",
@@ -168,7 +208,7 @@ func TestAdController_CreateAd(t *testing.T) {
 			args: args{
 				c: nil,
 				request: model.CreateAdRequest{
-					Title:    "test",
+					Title:    "test test",
 					Content:  "test",
 					StartAt:  model.CustomTime(time.Now().Add(-1 * time.Hour * 24)),
 					EndAt:    model.CustomTime(time.Now().Add(1 * time.Hour * 24)),
@@ -180,6 +220,29 @@ func TestAdController_CreateAd(t *testing.T) {
 				},
 				expectVersion: 1,
 			},
+			expectStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "Test CreateAd BadRequest",
+			fields: fields{
+				adService: services.AdService,
+			},
+			args: args{
+				c: nil,
+				request: model.CreateAdRequest{
+					Title:    "test bad request",
+					Content:  "test bad request",
+					StartAt:  model.CustomTime(time.Now().Add(-1 * time.Hour * 24)),
+					EndAt:    model.CustomTime(time.Now().Add(-10 * time.Hour * 24)),
+					AgeStart: 18,
+					AgeEnd:   65,
+					Gender:   []string{"F", "M"},
+					Country:  []string{"TW"},
+					Platform: []string{"ios"},
+				},
+				expectVersion: 2,
+			},
+			expectStatus: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -236,7 +299,7 @@ func TestAdController_CreateAd(t *testing.T) {
 			}).ExpectEvalSha(".", []string{"lock:ad"}, ".").SetVal(".")
 
 			ac.CreateAd(c)
-			assert.Equal(t, http.StatusInternalServerError, w.Code)
+			assert.Equal(t, tt.expectStatus, w.Code)
 			// t.Logf("Response: %s", w.Body.String())
 		})
 	}
