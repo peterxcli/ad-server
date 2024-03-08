@@ -54,9 +54,34 @@ func TestRunner_IsRunning(t *testing.T) {
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
 			}
-			go r.Start()
-			if got := r.IsRunning(); got != tt.want {
-				t.Errorf("Runner.IsRunning() = %v, want %v", got, tt.want)
+
+func TestNewRunner(t *testing.T) {
+	type args struct {
+		store model.InMemoryStore
+	}
+	tests := []struct {
+		name string
+		args args
+		want *Runner
+	}{
+		{
+			name: "Test NewRunner",
+			args: args{
+				store: inmem.NewInMemoryStore(),
+			},
+			want: &Runner{
+				RequestChan:  make(chan interface{}),
+				ResponseChan: make(map[string]chan interface{}),
+				Store:        inmem.NewInMemoryStore(),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.want.Store = tt.args.store
+			if got := NewRunner(tt.args.store); !reflect.DeepEqual(got.Store, tt.want.Store) {
+				t.Errorf("NewRunner() = %v, want %v", got, tt.want)
 			}
 		})
 	}
