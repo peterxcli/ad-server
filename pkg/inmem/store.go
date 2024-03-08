@@ -45,9 +45,9 @@ type InMemoryStoreImpl struct {
 	// then if the rebooted service's version is lower than the Version, it will fetch the latest ads from the db
 	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
 	ads              map[string]*model.Ad
-	adsByCountry     map[string]mapset.Set[string]
-	adsByGender      map[string]mapset.Set[string]
-	adsByPlatform    map[string]mapset.Set[string]
+	adsByCountry     map[string]mapset.Set[*model.Ad]
+	adsByGender      map[string]mapset.Set[*model.Ad]
+	adsByPlatform    map[string]mapset.Set[*model.Ad]
 	adByTimeInterval *interval.IntTree
 	adByAge          *interval.IntTree
 	mutex            sync.RWMutex
@@ -57,9 +57,9 @@ type InMemoryStoreImpl struct {
 func NewInMemoryStore() model.InMemoryStore {
 	return &InMemoryStoreImpl{
 		ads:              make(map[string]*model.Ad),
-		adsByCountry:     make(map[string]mapset.Set[string]),
-		adsByGender:      make(map[string]mapset.Set[string]),
-		adsByPlatform:    make(map[string]mapset.Set[string]),
+		adsByCountry:     make(map[string]mapset.Set[*model.Ad]),
+		adsByGender:      make(map[string]mapset.Set[*model.Ad]),
+		adsByPlatform:    make(map[string]mapset.Set[*model.Ad]),
 		adByTimeInterval: &interval.IntTree{},
 		adByAge:          &interval.IntTree{},
 		mutex:            sync.RWMutex{},
@@ -86,21 +86,21 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (err error) {
 		// Update indexes
 		for _, country := range ad.Country {
 			if s.adsByCountry[country] == nil {
-				s.adsByCountry[country] = mapset.NewSet[string]()
+				s.adsByCountry[country] = mapset.NewSet[*model.Ad]()
 			}
-			s.adsByCountry[country].Add(ad.ID.String())
+			s.adsByCountry[country].Add(ad)
 		}
 		for _, gender := range ad.Gender {
 			if s.adsByGender[gender] == nil {
-				s.adsByGender[gender] = mapset.NewSet[string]()
+				s.adsByGender[gender] = mapset.NewSet[*model.Ad]()
 			}
-			s.adsByGender[gender].Add(ad.ID.String())
+			s.adsByGender[gender].Add(ad)
 		}
 		for _, platform := range ad.Platform {
 			if s.adsByPlatform[platform] == nil {
-				s.adsByPlatform[platform] = mapset.NewSet[string]()
+				s.adsByPlatform[platform] = mapset.NewSet[*model.Ad]()
 			}
-			s.adsByPlatform[platform].Add(ad.ID.String())
+			s.adsByPlatform[platform].Add(ad)
 		}
 	}
 	return nil
@@ -115,21 +115,21 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	// Update indexes
 	for _, country := range ad.Country {
 		if s.adsByCountry[country] == nil {
-			s.adsByCountry[country] = mapset.NewSet[string]()
+			s.adsByCountry[country] = mapset.NewSet[*model.Ad]()
 		}
-		s.adsByCountry[country].Add(ad.ID.String())
+		s.adsByCountry[country].Add(ad)
 	}
 	for _, gender := range ad.Gender {
 		if s.adsByGender[gender] == nil {
-			s.adsByGender[gender] = mapset.NewSet[string]()
+			s.adsByGender[gender] = mapset.NewSet[*model.Ad]()
 		}
-		s.adsByGender[gender].Add(ad.ID.String())
+		s.adsByGender[gender].Add(ad)
 	}
 	for _, platform := range ad.Platform {
 		if s.adsByPlatform[platform] == nil {
-			s.adsByPlatform[platform] = mapset.NewSet[string]()
+			s.adsByPlatform[platform] = mapset.NewSet[*model.Ad]()
 		}
-		s.adsByPlatform[platform].Add(ad.ID.String())
+		s.adsByPlatform[platform].Add(ad)
 	}
 	err := s.adByTimeInterval.Insert(
 		&IntInterval{
@@ -165,9 +165,9 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	// nowUnix := int(now.Unix())
 
 	// Calculate the set based on filters
-	var candidateIDs mapset.Set[string]
-	timeIntervalIDs := mapset.NewSet[string]()
-	ageIntervalIDs := mapset.NewSet[string]()
+	var candidateIDs mapset.Set[*model.Ad]
+	timeIntervalIDs := mapset.NewSet[*model.Ad]()
+	ageIntervalIDs := mapset.NewSet[*model.Ad]()
 
 	// filter time with the interval tree
 	// timeIntervals := s.adByTimeInterval.Get(IntInterval{
@@ -203,7 +203,7 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 		if _, ok := s.adsByCountry[req.Country]; ok {
 			candidateIDs = s.adsByCountry[req.Country]
 		} else {
-			candidateIDs = mapset.NewSet[string]()
+			candidateIDs = mapset.NewSet[*model.Ad]()
 		}
 	}
 	if req.Gender != "" {
@@ -211,13 +211,13 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 			if _, ok := s.adsByGender[req.Gender]; ok {
 				candidateIDs = s.adsByGender[req.Gender]
 			} else {
-				candidateIDs = mapset.NewSet[string]()
+				candidateIDs = mapset.NewSet[*model.Ad]()
 			}
 		} else {
 			if _, ok := s.adsByGender[req.Gender]; ok {
 				candidateIDs = candidateIDs.Intersect(s.adsByGender[req.Gender])
 			} else {
-				candidateIDs = mapset.NewSet[string]()
+				candidateIDs = mapset.NewSet[*model.Ad]()
 			}
 		}
 	}
@@ -226,28 +226,27 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 			if _, ok := s.adsByPlatform[req.Platform]; ok {
 				candidateIDs = s.adsByPlatform[req.Platform]
 			} else {
-				candidateIDs = mapset.NewSet[string]()
+				candidateIDs = mapset.NewSet[*model.Ad]()
 			}
 		} else {
 			if _, ok := s.adsByPlatform[req.Platform]; ok {
 				candidateIDs = candidateIDs.Intersect(s.adsByPlatform[req.Platform])
 			} else {
-				candidateIDs = mapset.NewSet[string]()
+				candidateIDs = mapset.NewSet[*model.Ad]()
 			}
 		}
 	}
 
 	// If no filters are applied, use all ads
 	if candidateIDs == nil {
-		candidateIDs = mapset.NewSet[string]()
-		for id := range s.ads {
-			candidateIDs.Add(id)
+		candidateIDs = mapset.NewSet[*model.Ad]()
+		for _, val := range s.ads {
+			candidateIDs.Add(val)
 		}
 	}
 
 	// Filter by time and age, and apply pagination
-	for _, id := range candidateIDs.ToSlice() {
-		ad := s.ads[id]
+	for _, ad := range candidateIDs.ToSlice() {
 		if ad.StartAt.T().Before(now) && ad.EndAt.T().After(now) && ad.AgeStart <= req.Age && req.Age <= ad.AgeEnd {
 			ads = append(ads, ad)
 		}
