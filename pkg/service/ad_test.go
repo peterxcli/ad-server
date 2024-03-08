@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql/driver"
 	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/inmem"
 	"dcard-backend-2024/pkg/model"
 	"dcard-backend-2024/pkg/runner"
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -57,12 +57,6 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 	services = &bootstrap.Services{
 		AdService: adService,
 	}
-	mocks.DBMock.ExpectBegin()
-	mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
-		WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
-	mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
-		WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
-	mocks.DBMock.ExpectCommit()
 	return
 }
 
@@ -246,6 +240,25 @@ func TestAdService_CreateAd(t *testing.T) {
 				lockKey:  tt.fields.lockKey,
 				adStream: tt.fields.adStream,
 			}
+			mocks.DBMock.ExpectBegin()
+			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
+			mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
+			mocks.DBMock.ExpectCommit()
+			go a.Run()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			for {
+				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+					break
+				}
+				select {
+				case <-ctx.Done():
+					t.Fatalf("service did not start within %v", 5*time.Second)
+				case <-time.After(time.Millisecond * 100):
+				}
+			}
+			cancel()
 			mocks.CacheMock.Regexp().ExpectEvalSha(".", []string{tt.fields.lockKey}, ".", ".", ".").SetVal(".")
 			mocks.DBMock.ExpectBegin()
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
@@ -295,16 +308,97 @@ func TestAdService_CreateAd(t *testing.T) {
 		})
 	}
 }
+
+func TestAdService_GetAds(t *testing.T) {
 	type fields struct {
-		runner     *runner.Runner
-		db         *gorm.DB
-		redis      *redis.Client
-		locker     *redislock.Client
-		lockKey    string
-		adStream   string
-		onShutdown []func()
-		Version    int
+		runner   *runner.Runner
+		db       *gorm.DB
+		redis    *redis.Client
+		locker   *redislock.Client
+		lockKey  string
+		adStream string
 	}
+	type args struct {
+		ctx context.Context
+		req *model.GetAdRequest
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    []*model.Ad
+		want1   int
+		wantErr bool
+	}{
+		{
+			name: "test get ads",
+			fields: fields{
+				runner:   runner.NewRunner(inmem.NewInMemoryStore()),
+				db:       app.Conn,
+				redis:    app.Cache,
+				locker:   app.RedisLock,
+				lockKey:  lockKey + uuid.New().String(),
+				adStream: adStream + uuid.New().String(),
+			},
+			args: args{
+				ctx: context.Background(),
+				req: &model.GetAdRequest{
+					Age:      20,
+					Country:  "TW",
+					Platform: "ios",
+					Offset:   0,
+					Limit:    10,
+				},
+			},
+			want:    nil,
+			want1:   0,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AdService{
+				shutdown: atomic.Bool{},
+				runner:   tt.fields.runner,
+				db:       tt.fields.db,
+				redis:    tt.fields.redis,
+				locker:   tt.fields.locker,
+				lockKey:  tt.fields.lockKey,
+				adStream: tt.fields.adStream,
+			}
+			mocks.DBMock.ExpectBegin()
+			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
+			mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
+			mocks.DBMock.ExpectCommit()
+			go a.Run()
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			for {
+				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+					break
+				}
+				select {
+				case <-ctx.Done():
+					t.Fatalf("service did not start within %v", 5*time.Second)
+				case <-time.After(time.Millisecond * 100):
+				}
+			}
+			cancel()
+			got, got1, err := a.GetAds(tt.args.ctx, tt.args.req)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AdService.GetAds() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("AdService.GetAds() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("AdService.GetAds() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
 
 func TestAdService_Shutdown(t *testing.T) {
 	type fields struct {
@@ -328,13 +422,12 @@ func TestAdService_Shutdown(t *testing.T) {
 		{
 			name: "test shutdown",
 			fields: fields{
-				runner:   app.Runner,
+				runner:   runner.NewRunner(inmem.NewInMemoryStore()),
 				db:       app.Conn,
 				redis:    app.Cache,
 				locker:   app.RedisLock,
 				lockKey:  lockKey + uuid.New().String(),
 				adStream: adStream + uuid.New().String(),
-				Version:  0,
 			},
 			args: args{
 				timeout: 5 * time.Second,
@@ -352,8 +445,13 @@ func TestAdService_Shutdown(t *testing.T) {
 				locker:   tt.fields.locker,
 				lockKey:  tt.fields.lockKey,
 				adStream: tt.fields.adStream,
-				Version:  tt.fields.Version,
 			}
+			mocks.DBMock.ExpectBegin()
+			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
+			mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
+				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
+			mocks.DBMock.ExpectCommit()
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), tt.args.timeout)
 			for {
@@ -362,7 +460,7 @@ func TestAdService_Shutdown(t *testing.T) {
 				}
 				select {
 				case <-ctx.Done():
-					t.Fatalf("runner did not start within %v", tt.args.timeout)
+					t.Fatalf("service did not start within %v", tt.args.timeout)
 				case <-time.After(time.Millisecond * 100):
 				}
 			}
