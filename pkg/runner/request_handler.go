@@ -63,13 +63,6 @@ func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
 
 func (r *Runner) Start() {
 	r.Running.Store(true)
-	defer func() {
-		err := recover()
-		if err != nil {
-			r.Running.Store(false)
-			log.Println("Runner panic", err)
-		}
-	}()
 	log.Println("Runner started")
 	for {
 		select {
