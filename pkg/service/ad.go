@@ -202,6 +202,12 @@ func (a *AdService) registerOnShutdown(f func()) {
 	a.mu.Unlock()
 }
 
+func (a *AdService) onShutdownNum() int {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return len(a.onShutdown)
+}
+
 // storeAndPublishWithLock
 //
 // 1. locks the lockKey

@@ -3,12 +3,18 @@ package runner
 import (
 	"dcard-backend-2024/pkg/model"
 	"log"
+	"sync/atomic"
 )
 
 type Runner struct {
+	Running      atomic.Bool
 	RequestChan  chan interface{}
 	ResponseChan map[string]chan interface{}
 	Store        model.InMemoryStore
+}
+
+func (r *Runner) IsRunning() bool {
+	return r.Running.Load()
 }
 
 func NewRunner(store model.InMemoryStore) *Runner {
@@ -56,6 +62,14 @@ func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
 }
 
 func (r *Runner) Start() {
+	r.Running.Store(true)
+	defer func() {
+		err := recover()
+		if err != nil {
+			r.Running.Store(false)
+			log.Println("Runner panic", err)
+		}
+	}()
 	log.Println("Runner started")
 	for {
 		select {
