@@ -5,8 +5,21 @@ import (
 	"encoding/json"
 )
 
+type IRequest interface {
+	RequestUID() string
+}
+
 type Request struct {
+	IRequest
 	RequestID string `json:"request_id"`
+}
+
+func (r *Request) RequestUID() string {
+	return r.RequestID
+}
+
+type IResult interface {
+	Error() error
 }
 
 type Response struct {
@@ -47,9 +60,14 @@ func (r *CreateAdRequest) FromMap(m map[string]interface{}) error {
 }
 
 type CreateAdResponse struct {
+	IResult
 	Response
 	AdID string
 	Err  error
+}
+
+func (r *CreateAdResponse) Error() error {
+	return r.Err
 }
 
 type GetAdRequest struct {
@@ -58,8 +76,13 @@ type GetAdRequest struct {
 }
 
 type GetAdResponse struct {
+	IResult
 	Response
 	Ads   []*model.Ad
 	Total int
 	Err   error
+}
+
+func (r *GetAdResponse) Error() error {
+	return r.Err
 }
