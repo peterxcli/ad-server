@@ -1,3 +1,6 @@
+env:
+  DOMAIN: dcard-backend-intern-2024.peterxcli.dev
+
 on:
   push:
     branches:
@@ -27,6 +30,9 @@ jobs:
           mkdir -p public/coverage
           go test -coverprofile=coverage.out -v ./...
           go tool cover -html=coverage.out -o public/coverage/index.html
+
+      - name: Setup CNAME
+        run: echo $DOMAIN > public/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
