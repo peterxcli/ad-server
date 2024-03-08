@@ -36,6 +36,8 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 - implement the advertisement store by map with id primary key
 - implement the advertisement indexing by map[string]mapset.Set[string]
   - By the way, originally I was using `map[string]map[string]*model.Ad`, and the concurrent read speed was only 4000 QPS. After changing it to `map[string]mapset.Set[string]`, the concurrent read speed increased to over 10000 QPS!!!
+  - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
+  - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
 - ~~implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree~~
   - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
   - Currently, I just iterate all the advertisement and filter the result by the condition
