@@ -193,9 +193,10 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 		req *GetAdRequest
 	}
 	tests := []struct {
-		name   string
-		fields fields
-		args   args
+		name      string
+		fields    fields
+		args      args
+		expectErr error
 	}{
 		{
 			name: "Test handleGetAdRequest",
@@ -214,6 +215,7 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 					},
 				},
 			},
+			expectErr: inmem.ErrNoAdsFound,
 		},
 	}
 	for _, tt := range tests {
@@ -229,7 +231,7 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 			select {
 			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
 				if resp, ok := resp.(*GetAdResponse); ok {
-					assert.ErrorIs(t, resp.Err, inmem.ErrNoAdsFound)
+					assert.ErrorIs(t, resp.Err, tt.expectErr)
 				}
 			case <-time.After(3 * time.Second):
 				t.Errorf("Runner.handleGetAdRequest() = %v, want %v", nil, nil)
@@ -238,7 +240,96 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 	}
 }
 
+func TestRunner_Start(t *testing.T) {
+	type fields struct {
+	}
+	sharedStore := inmem.NewInMemoryStore()
+	sharedRequestChan := make(chan interface{})
+	sharedResponseChan := make(map[string]chan interface{})
+	sharedRunner := &Runner{
+		RequestChan:  sharedRequestChan,
+		ResponseChan: sharedResponseChan,
+		Store:        sharedStore,
+	}
+	go sharedRunner.Start()
+	tests := []struct {
+		name      string
+		fields    fields
+		payload   any
+		expectErr error
+	}{
+		{
+			name:   "Test Start CreateAdRequest",
+			fields: fields{},
+			payload: &CreateAdRequest{
+				Request: Request{RequestID: uuid.NewString()},
+				Ad: &model.Ad{
+					ID:       uuid.New(),
+					Title:    "test",
+					Content:  "test",
+					StartAt:  model.CustomTime(time.Now().Add(-1 * time.Hour * 24)),
+					EndAt:    model.CustomTime(time.Now().Add(1 * time.Hour * 24)),
+					AgeStart: 18,
+					AgeEnd:   65,
+					Gender:   []string{"F", "M"},
+					Country:  []string{"TW"},
+					Platform: []string{"ios"},
+				},
+			},
+			expectErr: nil,
+		},
+		{
+			name:   "Test Start GetAdRequest",
+			fields: fields{},
+			payload: &GetAdRequest{
+				Request: Request{RequestID: uuid.NewString()},
+				GetAdRequest: &model.GetAdRequest{
+					Age:     18,
+					Country: "TW",
+					Limit:   10,
+				},
+			},
+			expectErr: nil,
+		},
+		{
+			name:   "Test Start CreateBatchAdRequest",
+			fields: fields{},
+			payload: &CreateBatchAdRequest{
+				Request: Request{RequestID: uuid.NewString()},
+				Ads: []*model.Ad{
+					{
+						ID:       uuid.New(),
+						Title:    "test",
+						Content:  "test",
+						StartAt:  model.CustomTime(time.Now().Add(-1 * time.Hour * 24)),
+						EndAt:    model.CustomTime(time.Now().Add(1 * time.Hour * 24)),
+						AgeStart: 18,
+						AgeEnd:   65,
+						Gender:   []string{"F", "M"},
+						Country:  []string{"TW"},
+						Platform: []string{"ios"},
+					},
+				},
+			},
+			expectErr: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sharedResponseChan[tt.payload.(IRequest).RequestUID()] = make(chan interface{})
+			sharedRequestChan <- tt.payload
+			select {
+			case resp := <-sharedResponseChan[tt.payload.(IRequest).RequestUID()]:
+				if resp, ok := resp.(IResult); ok {
+					assert.ErrorIs(t, resp.Error(), tt.expectErr)
+				}
+			case <-time.After(3 * time.Second):
+				t.Errorf("Runner.Start() = %v, want %v", nil, nil)
 			}
+		})
+	}
+}
 
 func TestNewRunner(t *testing.T) {
 	type args struct {
