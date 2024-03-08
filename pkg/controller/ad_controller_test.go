@@ -304,3 +304,31 @@ func TestAdController_CreateAd(t *testing.T) {
 		})
 	}
 }
+
+func TestNewAdController(t *testing.T) {
+	type args struct {
+		adService model.AdService
+	}
+	tests := []struct {
+		name string
+		args args
+		want *AdController
+	}{
+		{
+			name: "Test NewAdController",
+			args: args{
+				adService: services.AdService,
+			},
+			want: &AdController{
+				adService: services.AdService,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewAdController(tt.args.adService); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewAdController() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
