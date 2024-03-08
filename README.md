@@ -55,6 +55,16 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 
 ## Misc
 
+### Test Coverage
+
+<https://dcard-backend-intern-2024.peterxcli.dev/coverage>
+
+### Swagger API Document
+
+<https://dcard-backend-intern-2024.peterxcli.dev/docs>
+
+### Code Statistic
+
 ![alt text](./img/gocolc.png)
 
 ## 後話
