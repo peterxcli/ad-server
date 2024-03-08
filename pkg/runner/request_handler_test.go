@@ -53,6 +53,72 @@ func TestRunner_IsRunning(t *testing.T) {
 	}
 }
 
+func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
+	type fields struct {
+		RequestChan  chan interface{}
+		ResponseChan map[string]chan interface{}
+		Store        model.InMemoryStore
+	}
+	type args struct {
+		req *CreateBatchAdRequest
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Test handleCreateBatchAdRequest",
+			fields: fields{
+				RequestChan:  make(chan interface{}),
+				ResponseChan: make(map[string]chan interface{}),
+				Store:        inmem.NewInMemoryStore(),
+			},
+			args: args{
+				req: &CreateBatchAdRequest{
+					Request: Request{RequestID: "test"},
+					Ads: []*model.Ad{
+						{
+							ID:       uuid.New(),
+							Title:    "test",
+							Content:  "test",
+							StartAt:  model.CustomTime(time.Now().Add(-1 * time.Hour * 24)),
+							EndAt:    model.CustomTime(time.Now().Add(1 * time.Hour * 24)),
+							AgeStart: 18,
+							AgeEnd:   65,
+							Gender:   []string{"F", "M"},
+							Country:  []string{"TW"},
+							Platform: []string{"ios"},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Runner{
+				RequestChan:  tt.fields.RequestChan,
+				ResponseChan: tt.fields.ResponseChan,
+				Store:        tt.fields.Store,
+			}
+			tt.fields.ResponseChan[tt.args.req.RequestID] = make(chan interface{})
+			go r.handleCreateBatchAdRequest(tt.args.req)
+			select {
+			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
+				if resp, ok := resp.(*CreateAdResponse); ok {
+					if resp.Err != nil {
+						t.Errorf("Runner.handleCreateBatchAdRequest() = %v, want %v", resp.Err, nil)
+					}
+					assert.Equal(t, resp.AdID, "")
+				}
+			case <-time.After(3 * time.Second):
+				t.Errorf("Runner.handleCreateBatchAdRequest() = %v, want %v", nil, nil)
+			}
+		})
+	}
+}
+
 func TestRunner_handleCreateAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
