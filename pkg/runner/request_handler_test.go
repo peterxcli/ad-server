@@ -183,12 +183,61 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 	}
 }
 
+func TestRunner_handleGetAdRequest(t *testing.T) {
+	type fields struct {
+		RequestChan  chan interface{}
+		ResponseChan map[string]chan interface{}
+		Store        model.InMemoryStore
+	}
+	type args struct {
+		req *GetAdRequest
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "Test handleGetAdRequest",
+			fields: fields{
+				RequestChan:  make(chan interface{}),
+				ResponseChan: make(map[string]chan interface{}),
+				Store:        inmem.NewInMemoryStore(),
+			},
+			args: args{
+				req: &GetAdRequest{
+					Request: Request{RequestID: "test"},
+					GetAdRequest: &model.GetAdRequest{
+						Age:     18,
+						Country: "TW",
+						Limit:   10,
+					},
+				},
+			},
+		},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &Runner{
 				RequestChan:  tt.fields.RequestChan,
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
+			}
+
+			tt.fields.ResponseChan[tt.args.req.RequestID] = make(chan interface{})
+			go r.handleGetAdRequest(tt.args.req)
+			select {
+			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
+				if resp, ok := resp.(*GetAdResponse); ok {
+					assert.ErrorIs(t, resp.Err, inmem.ErrNoAdsFound)
+				}
+			case <-time.After(3 * time.Second):
+				t.Errorf("Runner.handleGetAdRequest() = %v, want %v", nil, nil)
+			}
+		})
+	}
+}
+
 			}
 
 func TestNewRunner(t *testing.T) {
