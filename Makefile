@@ -1,4 +1,4 @@
-.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot bench
+.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot bench k6 coverage
 
 BLUE = \033[34m
 NC = \033[0m
@@ -63,3 +63,10 @@ bot: ## Run the bot
 
 bench: ## Run the benchmarks
 	go test -run='^$' -bench=. -benchtime=20s -benchmem ./...
+
+install-k6: ## Install k6
+	go install go.k6.io/xk6/cmd/xk6@latest
+	cd k6 && xk6 build --with github.com/grafana/xk6-dashboard@latest
+
+k6: ## Run the k6 tests
+	cd k6 && XK6_BROWSER_LOG=error ./k6 run --out web-dashboard=export=test-report.html script.js
