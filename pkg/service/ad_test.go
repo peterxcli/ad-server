@@ -73,3 +73,80 @@ func init() {
 	mocks.CacheMock.MatchExpectationsInOrder(false)
 	// adServices.Run()
 }
+
+func TestAdService_Shutdown(t *testing.T) {
+	type fields struct {
+		runner     *runner.Runner
+		db         *gorm.DB
+		redis      *redis.Client
+		locker     *redislock.Client
+		lockKey    string
+		adStream   string
+		onShutdown []func()
+		Version    int
+	}
+	type args struct {
+		timeout time.Duration
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test shutdown",
+			fields: fields{
+				runner:     app.Runner,
+				db:         app.Conn,
+				redis:      app.Cache,
+				locker:     app.RedisLock,
+				lockKey:    lockKey + uuid.New().String(),
+				adStream:   adStream + uuid.New().String(),
+				onShutdown: []func(){},
+				Version:    0,
+			},
+			args: args{
+				timeout: 5 * time.Second,
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			a := &AdService{
+				shutdown:   atomic.Bool{},
+				runner:     tt.fields.runner,
+				db:         tt.fields.db,
+				redis:      tt.fields.redis,
+				locker:     tt.fields.locker,
+				lockKey:    tt.fields.lockKey,
+				adStream:   tt.fields.adStream,
+				onShutdown: tt.fields.onShutdown,
+				Version:    tt.fields.Version,
+			}
+			go a.Run()
+			ctx, cancel := context.WithTimeout(context.Background(), tt.args.timeout)
+			for {
+				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+					break
+				}
+				select {
+				case <-ctx.Done():
+					t.Fatalf("runner did not start within %v", tt.args.timeout)
+				case <-time.After(time.Millisecond * 100):
+				}
+			}
+			cancel()
+			ctx, cancel = context.WithTimeout(context.Background(), tt.args.timeout)
+			defer cancel()
+			if err := a.Shutdown(ctx); (err != nil) != tt.wantErr {
+				t.Errorf("AdService.Shutdown() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			// print the context pass time
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			t.Log(time.Duration(time.Second*5 - (deadline.Sub(time.Now()))))
+		})
+	}
+}
