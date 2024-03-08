@@ -9,7 +9,7 @@ import (
 type Runner struct {
 	Running      atomic.Bool
 	RequestChan  chan interface{}
-	ResponseChan map[string]chan interface{}
+	ResponseChan *Map
 	Store        model.InMemoryStore
 }
 
@@ -20,7 +20,7 @@ func (r *Runner) IsRunning() bool {
 func NewRunner(store model.InMemoryStore) *Runner {
 	return &Runner{
 		RequestChan:  make(chan interface{}),
-		ResponseChan: make(map[string]chan interface{}),
+		ResponseChan: &Map{},
 		Store:        store,
 	}
 }
@@ -28,8 +28,9 @@ func NewRunner(store model.InMemoryStore) *Runner {
 func (r *Runner) handleCreateBatchAdRequest(req *CreateBatchAdRequest) {
 	err := r.Store.CreateBatchAds(req.Ads)
 
-	if r.ResponseChan[req.RequestID] != nil {
-		r.ResponseChan[req.RequestID] <- &CreateAdResponse{
+	// use sync map to store the response channel
+	if r.ResponseChan.Exists(req.RequestID) {
+		r.ResponseChan.Load(req.RequestID) <- &CreateAdResponse{
 			Response: Response{RequestID: req.RequestID},
 			Err:      err,
 		}
@@ -39,8 +40,8 @@ func (r *Runner) handleCreateBatchAdRequest(req *CreateBatchAdRequest) {
 func (r *Runner) handleCreateAdRequest(req *CreateAdRequest) {
 	adIDr, err := r.Store.CreateAd(req.Ad)
 
-	if r.ResponseChan[req.RequestID] != nil {
-		r.ResponseChan[req.RequestID] <- &CreateAdResponse{
+	if r.ResponseChan.Exists(req.RequestID) {
+		r.ResponseChan.Load(req.RequestID) <- &CreateAdResponse{
 			Response: Response{RequestID: req.RequestID},
 			AdID:     adIDr,
 			Err:      err,
@@ -51,8 +52,8 @@ func (r *Runner) handleCreateAdRequest(req *CreateAdRequest) {
 func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
 	ads, total, err := r.Store.GetAds(req.GetAdRequest)
 
-	if r.ResponseChan[req.RequestID] != nil {
-		r.ResponseChan[req.RequestID] <- &GetAdResponse{
+	if r.ResponseChan.Exists(req.RequestID) {
+		r.ResponseChan.Load(req.RequestID) <- &GetAdResponse{
 			Response: Response{RequestID: req.RequestID},
 			Ads:      ads,
 			Total:    total,

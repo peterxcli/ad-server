@@ -15,7 +15,7 @@ import (
 func TestRunner_IsRunning(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan map[string]chan interface{}
+		ResponseChan *Map
 		Store        model.InMemoryStore
 	}
 	tests := []struct {
@@ -27,7 +27,7 @@ func TestRunner_IsRunning(t *testing.T) {
 			name: "Test IsRunning",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: make(map[string]chan interface{}),
+				ResponseChan: &Map{},
 				Store:        nil,
 			},
 			want: true,
@@ -56,7 +56,7 @@ func TestRunner_IsRunning(t *testing.T) {
 func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan map[string]chan interface{}
+		ResponseChan *Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -71,7 +71,7 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 			name: "Test handleCreateBatchAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: make(map[string]chan interface{}),
+				ResponseChan: &Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -102,10 +102,10 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
 			}
-			tt.fields.ResponseChan[tt.args.req.RequestID] = make(chan interface{})
+			tt.fields.ResponseChan.Store(tt.args.req.RequestID, make(chan interface{}))
 			go r.handleCreateBatchAdRequest(tt.args.req)
 			select {
-			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
+			case resp := <-tt.fields.ResponseChan.Load(tt.args.req.RequestID):
 				if resp, ok := resp.(*CreateAdResponse); ok {
 					if resp.Err != nil {
 						t.Errorf("Runner.handleCreateBatchAdRequest() = %v, want %v", resp.Err, nil)
@@ -122,7 +122,7 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 func TestRunner_handleCreateAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan map[string]chan interface{}
+		ResponseChan *Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -137,7 +137,7 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 			name: "Test handleCreateAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: make(map[string]chan interface{}),
+				ResponseChan: &Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -166,10 +166,10 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
 			}
-			tt.fields.ResponseChan[tt.args.req.RequestID] = make(chan interface{})
+			tt.fields.ResponseChan.Store(tt.args.req.RequestID, make(chan interface{}))
 			go r.handleCreateAdRequest(tt.args.req)
 			select {
-			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
+			case resp := <-tt.fields.ResponseChan.Load(tt.args.req.RequestID):
 				if resp, ok := resp.(*CreateAdResponse); ok {
 					if resp.Err != nil {
 						t.Errorf("Runner.handleCreateAdRequest() = %v, want %v", resp.Err, nil)
@@ -186,7 +186,7 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 func TestRunner_handleGetAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan map[string]chan interface{}
+		ResponseChan *Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -202,7 +202,7 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 			name: "Test handleGetAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: make(map[string]chan interface{}),
+				ResponseChan: &Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -226,10 +226,10 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 				Store:        tt.fields.Store,
 			}
 
-			tt.fields.ResponseChan[tt.args.req.RequestID] = make(chan interface{})
+			tt.fields.ResponseChan.Store(tt.args.req.RequestID, make(chan interface{}))
 			go r.handleGetAdRequest(tt.args.req)
 			select {
-			case resp := <-tt.fields.ResponseChan[tt.args.req.RequestID]:
+			case resp := <-tt.fields.ResponseChan.Load(tt.args.req.RequestID):
 				if resp, ok := resp.(*GetAdResponse); ok {
 					assert.ErrorIs(t, resp.Err, tt.expectErr)
 				}
@@ -245,7 +245,7 @@ func TestRunner_Start(t *testing.T) {
 	}
 	sharedStore := inmem.NewInMemoryStore()
 	sharedRequestChan := make(chan interface{})
-	sharedResponseChan := make(map[string]chan interface{})
+	sharedResponseChan := &Map{}
 	sharedRunner := &Runner{
 		RequestChan:  sharedRequestChan,
 		ResponseChan: sharedResponseChan,
@@ -317,10 +317,11 @@ func TestRunner_Start(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sharedResponseChan[tt.payload.(IRequest).RequestUID()] = make(chan interface{})
+			requestID := tt.payload.(IRequest).RequestUID()
+			sharedResponseChan.Store(requestID, make(chan interface{}))
 			sharedRequestChan <- tt.payload
 			select {
-			case resp := <-sharedResponseChan[tt.payload.(IRequest).RequestUID()]:
+			case resp := <-sharedResponseChan.Load(requestID):
 				if resp, ok := resp.(IResult); ok {
 					assert.ErrorIs(t, resp.Error(), tt.expectErr)
 				}
@@ -347,7 +348,7 @@ func TestNewRunner(t *testing.T) {
 			},
 			want: &Runner{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: make(map[string]chan interface{}),
+				ResponseChan: &Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 		},

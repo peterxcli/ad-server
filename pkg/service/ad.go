@@ -124,15 +124,15 @@ func (a *AdService) Restore() (err error) {
 		return err
 	}
 	requestID := uuid.New().String()
-	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
-	defer delete(a.runner.ResponseChan, requestID)
+	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.runner.ResponseChan.Delete(requestID)
 	a.runner.RequestChan <- &runner.CreateBatchAdRequest{
 		Request: runner.Request{RequestID: requestID},
 		Ads:     ads,
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan[requestID]:
+	case resp := <-a.runner.ResponseChan.Load(requestID):
 		if resp, ok := resp.(*runner.CreateAdResponse); ok {
 			if resp.Err == nil {
 				log.Printf("Restored version: %d successfully\n", a.Version)
@@ -282,15 +282,15 @@ func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, er
 	a.wg.Add(1)
 	defer a.wg.Done()
 	requestID := uuid.New().String()
-	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
-	defer delete(a.runner.ResponseChan, requestID)
+	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.runner.ResponseChan.Delete(requestID)
 	err = a.storeAndPublishWithLock(ctx, ad, requestID)
 	if err != nil {
 		return "", err
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan[requestID]:
+	case resp := <-a.runner.ResponseChan.Load(requestID):
 		if resp, ok := resp.(*runner.CreateAdResponse); ok {
 			return resp.AdID, resp.Err
 		}
@@ -308,8 +308,8 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 
 	requestID := uuid.New().String()
 
-	a.runner.ResponseChan[requestID] = make(chan interface{}, 1)
-	defer delete(a.runner.ResponseChan, requestID)
+	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.runner.ResponseChan.Delete(requestID)
 
 	a.runner.RequestChan <- &runner.GetAdRequest{
 		Request:      runner.Request{RequestID: requestID},
@@ -317,7 +317,7 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan[requestID]:
+	case resp := <-a.runner.ResponseChan.Load(requestID):
 		if resp, ok := resp.(*runner.GetAdResponse); ok {
 			return resp.Ads, resp.Total, resp.Err
 		}
