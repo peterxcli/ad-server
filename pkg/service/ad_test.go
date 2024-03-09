@@ -153,6 +153,7 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 					pq.StringArray(tt.args.ad.Country),
 					pq.StringArray(tt.args.ad.Platform),
 					tt.args.ad.Version,
+					true,
 					AnyTime{},
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 			mocks.DBMock.ExpectCommit()
@@ -276,6 +277,7 @@ func TestAdService_CreateAd(t *testing.T) {
 					pq.StringArray(tt.args.ad.Country),
 					pq.StringArray(tt.args.ad.Platform),
 					tt.args.ad.Version,
+					true,
 					AnyTime{},
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 			mocks.DBMock.ExpectCommit()
@@ -370,7 +372,7 @@ func TestAdService_GetAds(t *testing.T) {
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
 				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
 			mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
-				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
+				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end", "gender", "country", "platform"}))
 			mocks.DBMock.ExpectCommit()
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -450,7 +452,7 @@ func TestAdService_Shutdown(t *testing.T) {
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
 				WillReturnRows(mocks.DBMock.NewRows([]string{"COALESCE"}))
 			mocks.DBMock.ExpectQuery("SELECT (.+) FROM \"ads\"").
-				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end"}))
+				WillReturnRows(mocks.DBMock.NewRows([]string{"id", "title", "content", "start_at", "end_at", "age_start", "age_end", "gender", "country", "platform"}))
 			mocks.DBMock.ExpectCommit()
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), tt.args.timeout)

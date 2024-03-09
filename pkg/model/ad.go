@@ -14,13 +14,14 @@ type Ad struct {
 	Content  string         `gorm:"type:text" json:"content"`
 	StartAt  CustomTime     `gorm:"type:timestamp" json:"start_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
 	EndAt    CustomTime     `gorm:"type:timestamp" json:"end_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	AgeStart int            `gorm:"type:integer" json:"age_start"`
-	AgeEnd   int            `gorm:"type:integer" json:"age_end"`
+	AgeStart uint8          `gorm:"type:integer" json:"age_start"`
+	AgeEnd   uint8          `gorm:"type:integer" json:"age_end"`
 	Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
 	Country  pq.StringArray `gorm:"type:text[]" json:"country"`
 	Platform pq.StringArray `gorm:"type:text[]" json:"platform"`
 	// Version, cant use sequence number, because the version is not continuous if we want to support update and delete
 	Version   int        `gorm:"index" json:"version"`
+	IsActive  bool       `gorm:"type:boolean; default:true" json:"-" default:"true"`
 	CreatedAt CustomTime `gorm:"type:timestamp" json:"created_at"`
 }
 
@@ -34,7 +35,7 @@ func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
 // StartAt < Now() < EndAt
 type GetAdRequest struct {
 	// AgeStart <= Age <= AgeEnd
-	Age      int    `form:"age" binding:"omitempty,gt=0"`
+	Age      uint8  `form:"age" binding:"omitempty,gt=0"`
 	Country  string `form:"country" binding:"omitempty,iso3166_1_alpha2"`
 	Gender   string `form:"gender" binding:"omitempty,oneof=M F"`
 	Platform string `form:"platform" binding:"omitempty,oneof=android ios web"`
@@ -53,8 +54,8 @@ type CreateAdRequest struct {
 	Content  string     `json:"content" binding:"required"`
 	StartAt  CustomTime `json:"start_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
 	EndAt    CustomTime `json:"end_at" binding:"required,gtfield=StartAt" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	AgeStart int        `json:"age_start" binding:"gtefield=AgeStart,lte=100" example:"18"`
-	AgeEnd   int        `json:"age_end" binding:"required" example:"65"`
+	AgeStart uint8      `json:"age_start" binding:"gtefield=AgeStart,lte=100" example:"18"`
+	AgeEnd   uint8      `json:"age_end" binding:"required" example:"65"`
 	Gender   []string   `json:"gender" binding:"required,dive,oneof=M F" example:"F"`
 	Country  []string   `json:"country" binding:"required,dive,iso3166_1_alpha2" example:"TW"`
 	Platform []string   `json:"platform" binding:"required,dive,oneof=android ios web" example:"ios"`
