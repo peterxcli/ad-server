@@ -2,6 +2,7 @@ package runner
 
 import (
 	"dcard-backend-2024/pkg/model"
+	"dcard-backend-2024/pkg/syncmap"
 	"log"
 	"sync/atomic"
 )
@@ -9,7 +10,7 @@ import (
 type Runner struct {
 	Running      atomic.Bool
 	RequestChan  chan interface{}
-	ResponseChan *Map
+	ResponseChan *syncmap.Map
 	Store        model.InMemoryStore
 }
 
@@ -20,7 +21,7 @@ func (r *Runner) IsRunning() bool {
 func NewRunner(store model.InMemoryStore) *Runner {
 	return &Runner{
 		RequestChan:  make(chan interface{}),
-		ResponseChan: &Map{},
+		ResponseChan: &syncmap.Map{},
 		Store:        store,
 	}
 }

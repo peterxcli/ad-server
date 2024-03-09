@@ -4,6 +4,7 @@ import (
 	"context"
 	"dcard-backend-2024/pkg/inmem"
 	"dcard-backend-2024/pkg/model"
+	"dcard-backend-2024/pkg/syncmap"
 	"reflect"
 	"testing"
 	"time"
@@ -15,7 +16,7 @@ import (
 func TestRunner_IsRunning(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan *Map
+		ResponseChan *syncmap.Map
 		Store        model.InMemoryStore
 	}
 	tests := []struct {
@@ -27,7 +28,7 @@ func TestRunner_IsRunning(t *testing.T) {
 			name: "Test IsRunning",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: &Map{},
+				ResponseChan: &syncmap.Map{},
 				Store:        nil,
 			},
 			want: true,
@@ -56,7 +57,7 @@ func TestRunner_IsRunning(t *testing.T) {
 func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan *Map
+		ResponseChan *syncmap.Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -71,7 +72,7 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 			name: "Test handleCreateBatchAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: &Map{},
+				ResponseChan: &syncmap.Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -122,7 +123,7 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 func TestRunner_handleCreateAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan *Map
+		ResponseChan *syncmap.Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -137,7 +138,7 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 			name: "Test handleCreateAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: &Map{},
+				ResponseChan: &syncmap.Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -186,7 +187,7 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 func TestRunner_handleGetAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
-		ResponseChan *Map
+		ResponseChan *syncmap.Map
 		Store        model.InMemoryStore
 	}
 	type args struct {
@@ -202,7 +203,7 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 			name: "Test handleGetAdRequest",
 			fields: fields{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: &Map{},
+				ResponseChan: &syncmap.Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 			args: args{
@@ -245,7 +246,7 @@ func TestRunner_Start(t *testing.T) {
 	}
 	sharedStore := inmem.NewInMemoryStore()
 	sharedRequestChan := make(chan interface{})
-	sharedResponseChan := &Map{}
+	sharedResponseChan := &syncmap.Map{}
 	sharedRunner := &Runner{
 		RequestChan:  sharedRequestChan,
 		ResponseChan: sharedResponseChan,
@@ -348,7 +349,7 @@ func TestNewRunner(t *testing.T) {
 			},
 			want: &Runner{
 				RequestChan:  make(chan interface{}),
-				ResponseChan: &Map{},
+				ResponseChan: &syncmap.Map{},
 				Store:        inmem.NewInMemoryStore(),
 			},
 		},
