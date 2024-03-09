@@ -1,4 +1,4 @@
-package runner
+package syncmap
 
 import "sync"
 
