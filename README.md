@@ -55,6 +55,16 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 
 ### Recovery
 
+## Testing
+
+### Unit Test
+
+- gotests auto generate test functions
+- [redis mock](https://github.com/go-redis/redismock/v9)
+- [sqlmock](https://github.com/DATA-DOG/go-sqlmock)
+
+### K6 Load Test
+
 ## Misc
 
 ### Test Coverage
