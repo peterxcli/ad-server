@@ -28,7 +28,36 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 
 ### Persistence Layer - PostgreSQL
 
+- each advertisement is stored in the `ad` table, the multi-choice field is stored as string array(postgresql array type)
+
+```go
+type Ad struct {
+ ID       uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
+ Title    string         `gorm:"type:text" json:"title"`
+ Content  string         `gorm:"type:text" json:"content"`
+ StartAt  CustomTime     `gorm:"type:timestamp" json:"start_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+ EndAt    CustomTime     `gorm:"type:timestamp" json:"end_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+ AgeStart uint8          `gorm:"type:integer" json:"age_start"`
+ AgeEnd   uint8          `gorm:"type:integer" json:"age_end"`
+ Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
+ Country  pq.StringArray `gorm:"type:text[]" json:"country"`
+ Platform pq.StringArray `gorm:"type:text[]" json:"platform"`
+ Version   int           `gorm:"index" json:"version"`
+ IsActive  bool          `gorm:"type:boolean; default:true" json:"-" default:"true"`
+ CreatedAt CustomTime    `gorm:"type:timestamp" json:"created_at"`
+}
+```
+
 ### Log Layer - Redis Stream
+
+> no leader, no follower, all instance(replica) are equal
+
+- use `XADD` to append the log (create, update, delete)
+  - the publisher replica did not update its inmemory database at the same time
+- all instance subscribe with `XREAD` to get the log
+- the inmemory database for each replica only update if the replica receive the log from the redis stream
+
+TODO: image from redis insight
 
 ### In-Memory Database (Local)
 
@@ -38,13 +67,14 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
   - By the way, originally I was using `map[string]map[string]*model.Ad`, and the concurrent read speed was only 4000 QPS. After changing it to `map[string]mapset.Set[string]`, the concurrent read speed increased to over 10000 QPS!!!
   - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
   - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
+  - upd: I have tried to implement the multi-indexing, the write performance is down, but the read performance is now 1166960 QPS, so I think it's worth it - [commit detail](https://github.com/peterxcli/dcard-backend-2024/commit/028f68a2b1e770aac0754331826fd3110aa0b977)
 - ~~implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree~~
   - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
   - Currently, I just iterate all the advertisement and filter the result by the condition
 
 #### Benchmark
 
-> if interval tree is in use, it doesnt apply on time range query since the performance issue
+> if interval tree is in use, it doesn't apply on time range query since the performance issue
 
 1. github.com/rdleal/intervalst
 ![alt text](./img/rdleal-interval-inmem.png)
@@ -53,7 +83,13 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 3. Just iterate all the advertisement and filter the result by the condition
 ![alt text](./img/iterate-inmem.png)
 
-### Recovery
+### Fault Recovery
+
+- The recovery process is done by the snapshot and the log to prevent the state machine need to replay all the log from the beginning
+- the snapshot only modified if there is a new create, update, or delete operation
+- the snapshot can be stored in postgresql
+- retry if the snapshot version and the log version is not match
+- if there aren't any problem, start to subscribe the log from the snapshot version and replay the log
 
 ## Testing
 
@@ -79,6 +115,11 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 
 ![alt text](./img/gocolc.png)
 
-## 後話
+<!-- ## 後話 -->
 
-1. 可以用 postgres CDC 來同步變動到 queue 裡面來達到更好的資料一致性, 但這只是一個 POC, 所以暫時沒有實作
+<!-- 1. 可以用 postgres CDC 來同步變動到 queue 裡面來達到更好的資料一致性, 但這只是一個 POC, 所以暫時沒有實作 -->
+
+## Reference
+
+- [sorted set](https://stackoverflow.com/a/32080338)
+<!-- - [pglogical(pg cdc full row)](https://github.com/2ndQuadrant/pglogical) -->
