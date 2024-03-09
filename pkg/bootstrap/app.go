@@ -37,7 +37,7 @@ func App(opts ...AppOpts) *Application {
 	db := NewDB(env)
 	cache := NewCache(env)
 	redisLock := NewRdLock(cache)
-	engine := gin.Default()
+	engine := gin.New()
 	adInMemStore := inmem.NewInMemoryStore()
 	runner := runner.NewRunner(adInMemStore)
 
