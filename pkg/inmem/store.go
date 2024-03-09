@@ -6,11 +6,9 @@ import (
 	"sort"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/biogo/store/interval"
 	mapset "github.com/deckarep/golang-set/v2"
-	"github.com/hashicorp/go-memdb"
 )
 
 var (
@@ -44,25 +42,20 @@ type InMemoryStoreImpl struct {
 	// use the Version as redis stream's message sequence number, and also store it as ad's version
 	// then if the rebooted service's version is lower than the Version, it will fetch the latest ads from the db
 	// and use the db's version as the Version, then start subscribing the redis stream from the Version offset
-	ads              map[string]*model.Ad
-	adsByCountry     map[string]mapset.Set[*model.Ad]
-	adsByGender      map[string]mapset.Set[*model.Ad]
-	adsByPlatform    map[string]mapset.Set[*model.Ad]
-	adByTimeInterval *interval.IntTree
-	adByAge          *interval.IntTree
-	mutex            sync.RWMutex
-	memdb            *memdb.MemDB
+	ads           map[string]*model.Ad
+	adsByCountry  map[string]mapset.Set[*model.Ad]
+	adsByGender   map[string]mapset.Set[*model.Ad]
+	adsByPlatform map[string]mapset.Set[*model.Ad]
+	mutex         sync.RWMutex
 }
 
 func NewInMemoryStore() model.InMemoryStore {
 	return &InMemoryStoreImpl{
-		ads:              make(map[string]*model.Ad),
-		adsByCountry:     make(map[string]mapset.Set[*model.Ad]),
-		adsByGender:      make(map[string]mapset.Set[*model.Ad]),
-		adsByPlatform:    make(map[string]mapset.Set[*model.Ad]),
-		adByTimeInterval: &interval.IntTree{},
-		adByAge:          &interval.IntTree{},
-		mutex:            sync.RWMutex{},
+		ads:           make(map[string]*model.Ad),
+		adsByCountry:  make(map[string]mapset.Set[*model.Ad]),
+		adsByGender:   make(map[string]mapset.Set[*model.Ad]),
+		adsByPlatform: make(map[string]mapset.Set[*model.Ad]),
+		mutex:         sync.RWMutex{},
 	}
 }
 
@@ -131,29 +124,6 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 		}
 		s.adsByPlatform[platform].Add(ad)
 	}
-	err := s.adByTimeInterval.Insert(
-		&IntInterval{
-			Start:   int(ad.StartAt.T().Unix()),
-			End:     int(ad.EndAt.T().Unix()),
-			UID:     uintptr(unsafe.Pointer(ad)),
-			Payload: ad.ID.String(),
-		}, false)
-
-	if err != nil {
-		return "", err
-	}
-
-	err = s.adByAge.Insert(
-		&IntInterval{
-			Start:   ad.AgeStart,
-			End:     ad.AgeEnd,
-			UID:     uintptr(unsafe.Pointer(ad)),
-			Payload: ad.ID.String(),
-		}, false)
-
-	if err != nil {
-		return "", err
-	}
 
 	return ad.ID.String(), nil
 }
@@ -168,27 +138,6 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	var candidateIDs mapset.Set[*model.Ad]
 	timeIntervalIDs := mapset.NewSet[*model.Ad]()
 	ageIntervalIDs := mapset.NewSet[*model.Ad]()
-
-	// filter time with the interval tree
-	// timeIntervals := s.adByTimeInterval.Get(IntInterval{
-	// 	Start: int(now.Unix()),
-	// 	End:   int(now.Unix()),
-	// })
-
-	// for _, timeInterval := range timeIntervals {
-	// 	adId := timeInterval.(*IntInterval).Payload.(string)
-	// 	timeIntervalIDs.Add(adId)
-	// }
-
-	// filter age with the interval tree
-	// ageIntervals := s.adByAge.Get(IntInterval{
-	// 	Start: req.Age,
-	// 	End:   req.Age,
-	// })
-	// for _, ageInterval := range ageIntervals {
-	// 	adId := ageInterval.(*IntInterval).Payload.(string)
-	// 	ageIntervalIDs.Add(adId)
-	// }
 
 	// intersect the time and age interval results
 	if timeIntervalIDs.Cardinality() > 0 && ageIntervalIDs.Cardinality() > 0 {
