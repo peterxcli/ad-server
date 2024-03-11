@@ -82,6 +82,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	cache, cacheMock := NewMockCache()
 	redisLock := NewRdLock(cache)
 	asynqClient := NewAsynqClient(env)
+	asynqServer := NewAsynqServer(env)
 	engine := gin.Default()
 	gin.SetMode(gin.TestMode)
 	adInMemStore := inmem.NewInMemoryStore()
@@ -102,6 +103,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 		RedisLock:   redisLock,
 		Runner:      runner,
 		AsynqClient: asynqClient,
+		AsynqServer: asynqServer,
 	}
 
 	mocks := &Mocks{

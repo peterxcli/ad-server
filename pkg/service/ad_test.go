@@ -171,7 +171,7 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 				NoMkStream: false,
 				Approx:     false,
 				MaxLen:     100000,
-				Values:     []interface{}{"ad", string(requestBytes)},
+				Values:     []interface{}{"ad", string(requestBytes), "type", "create"},
 				ID:         fmt.Sprintf("0-%d", tt.args.ad.Version),
 			}).SetVal(fmt.Sprintf("0-%d", tt.args.ad.Version))
 			mocks.CacheMock.CustomMatch(func(expected, actual []interface{}) error {
