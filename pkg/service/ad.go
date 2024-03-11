@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"database/sql"
+	"dcard-backend-2024/pkg/dispatcher"
 	"dcard-backend-2024/pkg/model"
-	"dcard-backend-2024/pkg/runner"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -29,7 +29,7 @@ var (
 
 type AdService struct {
 	shutdown    atomic.Bool
-	runner      *runner.Runner
+	dispatcher  *dispatcher.Dispatcher
 	db          *gorm.DB
 	redis       *redis.Client
 	locker      *redislock.Client
@@ -89,7 +89,7 @@ func (a *AdService) DeleteAd(ctx context.Context, adID string) error {
 	if err != nil {
 		return err
 	}
-	adReqMapStr, err := json.Marshal(runner.DeleteAdRequest{AdID: adID})
+	adReqMapStr, err := json.Marshal(dispatcher.DeleteAdRequest{AdID: adID})
 	if err != nil {
 		log.Printf("error marshalling ad request: %v", err)
 		return err
@@ -137,7 +137,7 @@ func (a *AdService) Shutdown(ctx context.Context) error {
 
 // Run implements model.AdService.
 func (a *AdService) Run() error {
-	go a.runner.Start() // Start the runner
+	go a.dispatcher.Start() // Start the dispatcher
 	stopCh := make(chan struct{}, 1)
 
 	a.wg.Add(1)
@@ -198,16 +198,16 @@ func (a *AdService) Restore() (err error) {
 		return err
 	}
 	requestID := uuid.New().String()
-	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
-	defer a.runner.ResponseChan.Delete(requestID)
-	a.runner.RequestChan <- &runner.CreateBatchAdRequest{
-		Request: runner.Request{RequestID: requestID},
+	a.dispatcher.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.dispatcher.ResponseChan.Delete(requestID)
+	a.dispatcher.RequestChan <- &dispatcher.CreateBatchAdRequest{
+		Request: dispatcher.Request{RequestID: requestID},
 		Ads:     ads,
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan.Load(requestID):
-		if resp, ok := resp.(*runner.CreateAdResponse); ok {
+	case resp := <-a.dispatcher.ResponseChan.Load(requestID):
+		if resp, ok := resp.(*dispatcher.CreateAdResponse); ok {
 			if resp.Err == nil {
 				log.Printf("Restored version: %d successfully\n", a.Version)
 			}
@@ -262,13 +262,13 @@ func (a *AdService) Subscribe() error {
 					}
 					switch m.Values["type"].(string) {
 					case "create":
-						payload := &runner.CreateAdRequest{}
+						payload := &dispatcher.CreateAdRequest{}
 						json.Unmarshal([]byte(m.Values["ad"].(string)), payload)
-						a.runner.RequestChan <- payload
+						a.dispatcher.RequestChan <- payload
 					case "delete":
-						payload := &runner.DeleteAdRequest{}
+						payload := &dispatcher.DeleteAdRequest{}
 						json.Unmarshal([]byte(m.Values["ad"].(string)), payload)
-						a.runner.RequestChan <- payload
+						a.dispatcher.RequestChan <- payload
 					default:
 						log.Printf("unknown message type: %s", m.Values["type"].(string))
 					}
@@ -333,8 +333,8 @@ func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad, r
 	if err != nil {
 		return
 	}
-	adReq := &runner.CreateAdRequest{
-		Request: runner.Request{RequestID: requestID},
+	adReq := &dispatcher.CreateAdRequest{
+		Request: dispatcher.Request{RequestID: requestID},
 		Ad:      ad,
 	}
 	// adReqMap, err := adReq.ToMap()
@@ -368,8 +368,8 @@ func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, er
 	a.wg.Add(1)
 	defer a.wg.Done()
 	requestID := uuid.New().String()
-	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
-	defer a.runner.ResponseChan.Delete(requestID)
+	a.dispatcher.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.dispatcher.ResponseChan.Delete(requestID)
 	err = a.storeAndPublishWithLock(ctx, ad, requestID)
 	if err != nil {
 		return "", err
@@ -381,8 +381,8 @@ func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, er
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan.Load(requestID):
-		if resp, ok := resp.(*runner.CreateAdResponse); ok {
+	case resp := <-a.dispatcher.ResponseChan.Load(requestID):
+		if resp, ok := resp.(*dispatcher.CreateAdResponse); ok {
 			return resp.AdID, resp.Err
 		}
 	case <-time.After(3 * time.Second):
@@ -416,17 +416,17 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 
 	requestID := uuid.New().String()
 
-	a.runner.ResponseChan.Store(requestID, make(chan interface{}, 1))
-	defer a.runner.ResponseChan.Delete(requestID)
+	a.dispatcher.ResponseChan.Store(requestID, make(chan interface{}, 1))
+	defer a.dispatcher.ResponseChan.Delete(requestID)
 
-	a.runner.RequestChan <- &runner.GetAdRequest{
-		Request:      runner.Request{RequestID: requestID},
+	a.dispatcher.RequestChan <- &dispatcher.GetAdRequest{
+		Request:      dispatcher.Request{RequestID: requestID},
 		GetAdRequest: req,
 	}
 
 	select {
-	case resp := <-a.runner.ResponseChan.Load(requestID):
-		if resp, ok := resp.(*runner.GetAdResponse); ok {
+	case resp := <-a.dispatcher.ResponseChan.Load(requestID):
+		if resp, ok := resp.(*dispatcher.GetAdResponse); ok {
 			return resp.Ads, resp.Total, resp.Err
 		}
 	case <-time.After(3 * time.Second):
@@ -436,9 +436,9 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 	return nil, 0, ErrUnknown
 }
 
-func NewAdService(runner *runner.Runner, db *gorm.DB, redis *redis.Client, locker *redislock.Client, asynqClient *asynq.Client) model.AdService {
+func NewAdService(dispatcher *dispatcher.Dispatcher, db *gorm.DB, redis *redis.Client, locker *redislock.Client, asynqClient *asynq.Client) model.AdService {
 	return &AdService{
-		runner:      runner,
+		dispatcher:  dispatcher,
 		db:          db,
 		redis:       redis,
 		locker:      locker,

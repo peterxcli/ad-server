@@ -73,7 +73,7 @@ func main() {
 	// Init services
 	// eventService := service.NewEventService(app.Conn, app.Cache)
 	adService := service.NewAdService(
-		app.Runner,
+		app.Dispatcher,
 		app.Conn,
 		app.Cache,
 		app.RedisLock,

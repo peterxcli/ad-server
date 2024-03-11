@@ -1,4 +1,4 @@
-package runner
+package dispatcher
 
 import (
 	"dcard-backend-2024/pkg/model"

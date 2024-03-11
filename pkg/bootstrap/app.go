@@ -2,8 +2,8 @@ package bootstrap
 
 import (
 	"context"
+	"dcard-backend-2024/pkg/dispatcher"
 	"dcard-backend-2024/pkg/inmem"
-	"dcard-backend-2024/pkg/runner"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,7 +32,7 @@ type Application struct {
 	AsynqServer *asynq.Server
 	Engine      *gin.Engine
 	RedisLock   *redislock.Client
-	Runner      *runner.Runner
+	Dispatcher  *dispatcher.Dispatcher
 }
 
 func App(opts ...AppOpts) *Application {
@@ -44,7 +44,7 @@ func App(opts ...AppOpts) *Application {
 	redisLock := NewRdLock(cache)
 	engine := gin.New()
 	adInMemStore := inmem.NewInMemoryStore()
-	runner := runner.NewRunner(adInMemStore)
+	dispatcher := dispatcher.NewDispatcher(adInMemStore)
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -59,7 +59,7 @@ func App(opts ...AppOpts) *Application {
 		Cache:       cache,
 		Engine:      engine,
 		RedisLock:   redisLock,
-		Runner:      runner,
+		Dispatcher:  dispatcher,
 		AsynqClient: asynqClient,
 		AsynqServer: asynqServer,
 	}
@@ -86,7 +86,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	engine := gin.Default()
 	gin.SetMode(gin.TestMode)
 	adInMemStore := inmem.NewInMemoryStore()
-	runner := runner.NewRunner(adInMemStore)
+	dispatcher := dispatcher.NewDispatcher(adInMemStore)
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -101,7 +101,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 		Cache:       cache,
 		Engine:      engine,
 		RedisLock:   redisLock,
-		Runner:      runner,
+		Dispatcher:  dispatcher,
 		AsynqClient: asynqClient,
 		AsynqServer: asynqServer,
 	}

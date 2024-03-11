@@ -1,4 +1,4 @@
-package runner
+package dispatcher
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func TestRunner_IsRunning(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRunner(tt.fields.Store)
+			r := NewDispatcher(tt.fields.Store)
 			go r.Start()
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
@@ -98,7 +98,7 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Runner{
+			r := &Dispatcher{
 				RequestChan:  tt.fields.RequestChan,
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
@@ -162,7 +162,7 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Runner{
+			r := &Dispatcher{
 				RequestChan:  tt.fields.RequestChan,
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
@@ -221,7 +221,7 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := &Runner{
+			r := &Dispatcher{
 				RequestChan:  tt.fields.RequestChan,
 				ResponseChan: tt.fields.ResponseChan,
 				Store:        tt.fields.Store,
@@ -247,7 +247,7 @@ func TestRunner_Start(t *testing.T) {
 	sharedStore := inmem.NewInMemoryStore()
 	sharedRequestChan := make(chan interface{})
 	sharedResponseChan := &syncmap.Map{}
-	sharedRunner := &Runner{
+	sharedRunner := &Dispatcher{
 		RequestChan:  sharedRequestChan,
 		ResponseChan: sharedResponseChan,
 		Store:        sharedStore,
@@ -340,14 +340,14 @@ func TestNewRunner(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want *Runner
+		want *Dispatcher
 	}{
 		{
 			name: "Test NewRunner",
 			args: args{
 				store: inmem.NewInMemoryStore(),
 			},
-			want: &Runner{
+			want: &Dispatcher{
 				RequestChan:  make(chan interface{}),
 				ResponseChan: &syncmap.Map{},
 				Store:        inmem.NewInMemoryStore(),
@@ -358,7 +358,7 @@ func TestNewRunner(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.want.Store = tt.args.store
-			if got := NewRunner(tt.args.store); !reflect.DeepEqual(got.Store, tt.want.Store) {
+			if got := NewDispatcher(tt.args.store); !reflect.DeepEqual(got.Store, tt.want.Store) {
 				t.Errorf("NewRunner() = %v, want %v", got, tt.want)
 			}
 		})

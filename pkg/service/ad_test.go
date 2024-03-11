@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql/driver"
 	"dcard-backend-2024/pkg/bootstrap"
+	"dcard-backend-2024/pkg/dispatcher"
 	"dcard-backend-2024/pkg/inmem"
 	"dcard-backend-2024/pkg/model"
-	"dcard-backend-2024/pkg/runner"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -50,7 +50,7 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 	// mocks.DBMock.ExpectExec("CREATE TABLE")
 	app.Conn.AutoMigrate(&model.Ad{})
 	adService := NewAdService(
-		app.Runner,
+		app.Dispatcher,
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
@@ -80,12 +80,12 @@ func init() {
 
 func TestAdService_storeAndPublishWithLock(t *testing.T) {
 	type fields struct {
-		runner   *runner.Runner
-		db       *gorm.DB
-		redis    *redis.Client
-		locker   *redislock.Client
-		lockKey  string
-		adStream string
+		dispatcher *dispatcher.Dispatcher
+		db         *gorm.DB
+		redis      *redis.Client
+		locker     *redislock.Client
+		lockKey    string
+		adStream   string
 	}
 	type args struct {
 		ctx       context.Context
@@ -101,12 +101,12 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 		{
 			name: "test store and publish with lock",
 			fields: fields{
-				runner:   app.Runner,
-				db:       app.Conn,
-				redis:    app.Cache,
-				locker:   app.RedisLock,
-				lockKey:  lockKey + uuid.New().String(),
-				adStream: adStream + uuid.New().String(),
+				dispatcher: app.Dispatcher,
+				db:         app.Conn,
+				redis:      app.Cache,
+				locker:     app.RedisLock,
+				lockKey:    lockKey + uuid.New().String(),
+				adStream:   adStream + uuid.New().String(),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -131,12 +131,12 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdService{
-				runner:   tt.fields.runner,
-				db:       tt.fields.db,
-				redis:    tt.fields.redis,
-				locker:   tt.fields.locker,
-				lockKey:  tt.fields.lockKey,
-				adStream: tt.fields.adStream,
+				dispatcher: tt.fields.dispatcher,
+				db:         tt.fields.db,
+				redis:      tt.fields.redis,
+				locker:     tt.fields.locker,
+				lockKey:    tt.fields.lockKey,
+				adStream:   tt.fields.adStream,
 			}
 			mocks.CacheMock.Regexp().ExpectEvalSha(".", []string{tt.fields.lockKey}, ".", ".", ".").SetVal(".")
 			mocks.DBMock.ExpectBegin()
@@ -159,8 +159,8 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 					AnyTime{},
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 			mocks.DBMock.ExpectCommit()
-			requestBytes, err := json.Marshal(runner.CreateAdRequest{
-				Request: runner.Request{RequestID: tt.args.requestID},
+			requestBytes, err := json.Marshal(dispatcher.CreateAdRequest{
+				Request: dispatcher.Request{RequestID: tt.args.requestID},
 				Ad:      tt.args.ad,
 			})
 			assert.Nil(t, err)
@@ -186,7 +186,7 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 
 func TestAdService_CreateAd(t *testing.T) {
 	type fields struct {
-		runner      *runner.Runner
+		dispatcher  *dispatcher.Dispatcher
 		db          *gorm.DB
 		redis       *redis.Client
 		locker      *redislock.Client
@@ -208,7 +208,7 @@ func TestAdService_CreateAd(t *testing.T) {
 		{
 			name: "test store and publish with lock",
 			fields: fields{
-				runner:      app.Runner,
+				dispatcher:  app.Dispatcher,
 				db:          app.Conn,
 				redis:       app.Cache,
 				locker:      app.RedisLock,
@@ -238,7 +238,7 @@ func TestAdService_CreateAd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdService{
-				runner:      tt.fields.runner,
+				dispatcher:  tt.fields.dispatcher,
 				db:          tt.fields.db,
 				redis:       tt.fields.redis,
 				locker:      tt.fields.locker,
@@ -255,7 +255,7 @@ func TestAdService_CreateAd(t *testing.T) {
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			for {
-				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+				if a.dispatcher.IsRunning() && a.onShutdownNum() == 2 {
 					break
 				}
 				select {
@@ -286,8 +286,8 @@ func TestAdService_CreateAd(t *testing.T) {
 					AnyTime{},
 				).WillReturnResult(sqlmock.NewResult(1, 1))
 			mocks.DBMock.ExpectCommit()
-			requestBytes, err := json.Marshal(runner.CreateAdRequest{
-				Request: runner.Request{RequestID: "???????????"},
+			requestBytes, err := json.Marshal(dispatcher.CreateAdRequest{
+				Request: dispatcher.Request{RequestID: "???????????"},
 				Ad:      tt.args.ad,
 			})
 			assert.Nil(t, err)
@@ -318,12 +318,12 @@ func TestAdService_CreateAd(t *testing.T) {
 
 func TestAdService_GetAds(t *testing.T) {
 	type fields struct {
-		runner   *runner.Runner
-		db       *gorm.DB
-		redis    *redis.Client
-		locker   *redislock.Client
-		lockKey  string
-		adStream string
+		dispatcher *dispatcher.Dispatcher
+		db         *gorm.DB
+		redis      *redis.Client
+		locker     *redislock.Client
+		lockKey    string
+		adStream   string
 	}
 	type args struct {
 		ctx context.Context
@@ -340,12 +340,12 @@ func TestAdService_GetAds(t *testing.T) {
 		{
 			name: "test get ads",
 			fields: fields{
-				runner:   runner.NewRunner(inmem.NewInMemoryStore()),
-				db:       app.Conn,
-				redis:    app.Cache,
-				locker:   app.RedisLock,
-				lockKey:  lockKey + uuid.New().String(),
-				adStream: adStream + uuid.New().String(),
+				dispatcher: dispatcher.NewDispatcher(inmem.NewInMemoryStore()),
+				db:         app.Conn,
+				redis:      app.Cache,
+				locker:     app.RedisLock,
+				lockKey:    lockKey + uuid.New().String(),
+				adStream:   adStream + uuid.New().String(),
 			},
 			args: args{
 				ctx: context.Background(),
@@ -365,13 +365,13 @@ func TestAdService_GetAds(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdService{
-				shutdown: atomic.Bool{},
-				runner:   tt.fields.runner,
-				db:       tt.fields.db,
-				redis:    tt.fields.redis,
-				locker:   tt.fields.locker,
-				lockKey:  tt.fields.lockKey,
-				adStream: tt.fields.adStream,
+				shutdown:   atomic.Bool{},
+				dispatcher: tt.fields.dispatcher,
+				db:         tt.fields.db,
+				redis:      tt.fields.redis,
+				locker:     tt.fields.locker,
+				lockKey:    tt.fields.lockKey,
+				adStream:   tt.fields.adStream,
 			}
 			mocks.DBMock.ExpectBegin()
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
@@ -382,7 +382,7 @@ func TestAdService_GetAds(t *testing.T) {
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			for {
-				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+				if a.dispatcher.IsRunning() && a.onShutdownNum() == 2 {
 					break
 				}
 				select {
@@ -409,13 +409,13 @@ func TestAdService_GetAds(t *testing.T) {
 
 func TestAdService_Shutdown(t *testing.T) {
 	type fields struct {
-		runner   *runner.Runner
-		db       *gorm.DB
-		redis    *redis.Client
-		locker   *redislock.Client
-		lockKey  string
-		adStream string
-		Version  int
+		dispatcher *dispatcher.Dispatcher
+		db         *gorm.DB
+		redis      *redis.Client
+		locker     *redislock.Client
+		lockKey    string
+		adStream   string
+		Version    int
 	}
 	type args struct {
 		timeout time.Duration
@@ -429,12 +429,12 @@ func TestAdService_Shutdown(t *testing.T) {
 		{
 			name: "test shutdown",
 			fields: fields{
-				runner:   runner.NewRunner(inmem.NewInMemoryStore()),
-				db:       app.Conn,
-				redis:    app.Cache,
-				locker:   app.RedisLock,
-				lockKey:  lockKey + uuid.New().String(),
-				adStream: adStream + uuid.New().String(),
+				dispatcher: dispatcher.NewDispatcher(inmem.NewInMemoryStore()),
+				db:         app.Conn,
+				redis:      app.Cache,
+				locker:     app.RedisLock,
+				lockKey:    lockKey + uuid.New().String(),
+				adStream:   adStream + uuid.New().String(),
 			},
 			args: args{
 				timeout: 5 * time.Second,
@@ -445,13 +445,13 @@ func TestAdService_Shutdown(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdService{
-				shutdown: atomic.Bool{},
-				runner:   tt.fields.runner,
-				db:       tt.fields.db,
-				redis:    tt.fields.redis,
-				locker:   tt.fields.locker,
-				lockKey:  tt.fields.lockKey,
-				adStream: tt.fields.adStream,
+				shutdown:   atomic.Bool{},
+				dispatcher: tt.fields.dispatcher,
+				db:         tt.fields.db,
+				redis:      tt.fields.redis,
+				locker:     tt.fields.locker,
+				lockKey:    tt.fields.lockKey,
+				adStream:   tt.fields.adStream,
 			}
 			mocks.DBMock.ExpectBegin()
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").
@@ -462,7 +462,7 @@ func TestAdService_Shutdown(t *testing.T) {
 			go a.Run()
 			ctx, cancel := context.WithTimeout(context.Background(), tt.args.timeout)
 			for {
-				if a.runner.IsRunning() && a.onShutdownNum() == 2 {
+				if a.dispatcher.IsRunning() && a.onShutdownNum() == 2 {
 					break
 				}
 				select {

@@ -60,7 +60,7 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 	// mocks.DBMock.ExpectExec("CREATE TABLE")
 	app.Conn.AutoMigrate(&model.Ad{})
 	adService := service.NewAdService(
-		app.Runner,
+		app.Dispatcher,
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
