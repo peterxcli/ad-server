@@ -17,6 +17,7 @@ import (
 	"github.com/bsm/redislock"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redismock/v9"
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -24,18 +25,20 @@ import (
 type AppOpts func(app *Application)
 
 type Application struct {
-	Env       *Env
-	Conn      *gorm.DB
-	Cache     *redis.Client
-	Engine    *gin.Engine
-	RedisLock *redislock.Client
-	Runner    *runner.Runner
+	Env         *Env
+	Conn        *gorm.DB
+	Cache       *redis.Client
+	AsynqClient *asynq.Client
+	Engine      *gin.Engine
+	RedisLock   *redislock.Client
+	Runner      *runner.Runner
 }
 
 func App(opts ...AppOpts) *Application {
 	env := NewEnv()
 	db := NewDB(env)
 	cache := NewCache(env)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: env.Redis.Host, Password: env.Redis.Password, DB: 0})
 	redisLock := NewRdLock(cache)
 	engine := gin.New()
 	adInMemStore := inmem.NewInMemoryStore()
@@ -49,12 +52,13 @@ func App(opts ...AppOpts) *Application {
 	time.Local = tz
 
 	app := &Application{
-		Env:       env,
-		Conn:      db,
-		Cache:     cache,
-		Engine:    engine,
-		RedisLock: redisLock,
-		Runner:    runner,
+		Env:         env,
+		Conn:        db,
+		Cache:       cache,
+		Engine:      engine,
+		RedisLock:   redisLock,
+		Runner:      runner,
+		AsynqClient: asynqClient,
 	}
 
 	for _, opt := range opts {
@@ -74,6 +78,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	db, dbMock := NewMockDB()
 	cache, cacheMock := NewMockCache()
 	redisLock := NewRdLock(cache)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: env.Redis.Host, Password: env.Redis.Password, DB: 0})
 	engine := gin.Default()
 	gin.SetMode(gin.TestMode)
 	adInMemStore := inmem.NewInMemoryStore()
@@ -87,12 +92,13 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	time.Local = tz
 
 	app := &Application{
-		Env:       env,
-		Conn:      db,
-		Cache:     cache,
-		Engine:    engine,
-		RedisLock: redisLock,
-		Runner:    runner,
+		Env:         env,
+		Conn:        db,
+		Cache:       cache,
+		Engine:      engine,
+		RedisLock:   redisLock,
+		Runner:      runner,
+		AsynqClient: asynqClient,
 	}
 
 	mocks := &Mocks{

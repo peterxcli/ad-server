@@ -26,12 +26,13 @@ var (
 )
 
 type AdService struct {
-	shutdown atomic.Bool
-	runner   *runner.Runner
-	db       *gorm.DB
-	redis    *redis.Client
-	locker   *redislock.Client
-	lockKey  string
+	shutdown    atomic.Bool
+	runner      *runner.Runner
+	db          *gorm.DB
+	redis       *redis.Client
+	locker      *redislock.Client
+	asynqClient *asynq.Client
+	lockKey     string
 	// adStream is the redis stream name for the ad
 	adStream   string
 	mu         sync.Mutex
@@ -328,16 +329,17 @@ func (a *AdService) GetAds(ctx context.Context, req *model.GetAdRequest) ([]*mod
 	return nil, 0, ErrUnknown
 }
 
-func NewAdService(runner *runner.Runner, db *gorm.DB, redis *redis.Client, locker *redislock.Client) model.AdService {
+func NewAdService(runner *runner.Runner, db *gorm.DB, redis *redis.Client, locker *redislock.Client, asynqClient *asynq.Client) model.AdService {
 	return &AdService{
-		runner:     runner,
-		db:         db,
-		redis:      redis,
-		locker:     locker,
-		lockKey:    "lock:ad",
-		onShutdown: make([]func(), 0),
-		adStream:   "ad",
-		shutdown:   atomic.Bool{},
-		Version:    0,
+		runner:      runner,
+		db:          db,
+		redis:       redis,
+		locker:      locker,
+		lockKey:     "lock:ad",
+		onShutdown:  make([]func(), 0),
+		adStream:    "ad",
+		asynqClient: asynqClient,
+		shutdown:    atomic.Bool{},
+		Version:     0,
 	}
 }
