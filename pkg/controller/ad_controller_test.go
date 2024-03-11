@@ -64,6 +64,7 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
+		app.AsynqClient,
 	)
 	services = &bootstrap.Services{
 		AdService: adService,
