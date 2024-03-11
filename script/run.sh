@@ -85,7 +85,9 @@ case "$action" in
         elif [ "$action" = "serve" ]; then
             air
         elif [ "$action" = "test" ]; then
-            go test -v -cover ./...
+            go test -coverprofile=coverage.out -v ./...
+	        go tool cover -html=coverage.out
+	        go tool cover -html=coverage.out -o coverage.html
         else
             echo "Error: Invalid command. Choose from (generate | migrate | run | serve)"
             exit 1
