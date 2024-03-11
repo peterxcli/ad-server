@@ -6,7 +6,8 @@ import (
 )
 
 type Services struct {
-	AdService model.AdService
+	AdService   model.AdService
+	TaskService model.TaskService
 }
 
 func (s *Services) Run() chan error {

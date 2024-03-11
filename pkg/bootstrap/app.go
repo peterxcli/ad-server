@@ -29,6 +29,7 @@ type Application struct {
 	Conn        *gorm.DB
 	Cache       *redis.Client
 	AsynqClient *asynq.Client
+	AsynqServer *asynq.Server
 	Engine      *gin.Engine
 	RedisLock   *redislock.Client
 	Runner      *runner.Runner
@@ -38,7 +39,8 @@ func App(opts ...AppOpts) *Application {
 	env := NewEnv()
 	db := NewDB(env)
 	cache := NewCache(env)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: env.Redis.Host, Password: env.Redis.Password, DB: 0})
+	asynqClient := NewAsynqClient(env)
+	asynqServer := NewAsynqServer(env)
 	redisLock := NewRdLock(cache)
 	engine := gin.New()
 	adInMemStore := inmem.NewInMemoryStore()
@@ -59,6 +61,7 @@ func App(opts ...AppOpts) *Application {
 		RedisLock:   redisLock,
 		Runner:      runner,
 		AsynqClient: asynqClient,
+		AsynqServer: asynqServer,
 	}
 
 	for _, opt := range opts {
@@ -78,7 +81,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	db, dbMock := NewMockDB()
 	cache, cacheMock := NewMockCache()
 	redisLock := NewRdLock(cache)
-	asynqClient := asynq.NewClient(asynq.RedisClientOpt{Addr: env.Redis.Host, Password: env.Redis.Password, DB: 0})
+	asynqClient := NewAsynqClient(env)
 	engine := gin.Default()
 	gin.SetMode(gin.TestMode)
 	adInMemStore := inmem.NewInMemoryStore()
@@ -121,6 +124,8 @@ func (app *Application) Run(services *Services) {
 	}
 
 	serverErrors := make(chan error, 1)
+
+	go RunAsynq(app, services, serverErrors)
 
 	go func() {
 		log.Printf("Background Services are running...")

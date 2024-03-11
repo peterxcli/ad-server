@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redismock/v9"
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -37,4 +38,27 @@ func NewCache(env *Env) *redis.Client {
 func NewMockCache() (*redis.Client, redismock.ClientMock) {
 	cache, cacheMock := redismock.NewClientMock()
 	return cache, cacheMock
+}
+
+func NewAsynqClient(env *Env) *asynq.Client {
+	return asynq.NewClient(
+		asynq.RedisClientOpt{
+			Addr:     fmt.Sprintf("%s:%d", env.Redis.Host, env.Redis.Port),
+			Password: env.Redis.Password,
+			DB:       0,
+		},
+	)
+}
+
+func NewAsynqServer(env *Env) *asynq.Server {
+	return asynq.NewServer(
+		asynq.RedisClientOpt{
+			Addr:     fmt.Sprintf("%s:%d", env.Redis.Host, env.Redis.Port),
+			Password: env.Redis.Password,
+			DB:       0,
+		},
+		asynq.Config{
+			Concurrency: 1,
+		},
+	)
 }
