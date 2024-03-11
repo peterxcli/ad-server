@@ -14,6 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    services:
+        redis:
+          image: redis
+          ports:
+            - 6379:6379
     steps:
       - uses: actions/checkout@v3
 
@@ -29,6 +34,9 @@ jobs:
           spec-file: docs/swagger.json
 
       - name: Test and Coverage
+        env:
+          APP_REDIS_HOST: localhost
+          APP_REDIS_PORT: 6379
         run: |
           mkdir -p public/coverage
           go test -coverprofile=coverage.out -v ./...
