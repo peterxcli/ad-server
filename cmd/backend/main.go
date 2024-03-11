@@ -26,7 +26,7 @@ func SetUpSwagger(spec *swag.Spec, app *bootstrap.Application) {
 }
 
 func SetUpAsynqMon(app *bootstrap.Application) {
-	readonly := true
+	readonly := false
 	h := asynqmon.New(asynqmon.Options{
 		RootPath:     "/monitoring", // RootPath specifies the root for asynqmon app
 		RedisConnOpt: asynq.RedisClientOpt{Addr: app.Cache.Options().Addr},
@@ -80,8 +80,11 @@ func main() {
 		app.AsynqClient,
 	)
 
+	taskService := service.NewTaskService(adService)
+
 	services := &bootstrap.Services{
-		AdService: adService,
+		AdService:   adService,
+		TaskService: taskService,
 	}
 
 	// Init routes
@@ -93,6 +96,7 @@ func main() {
 	// @name Authorization
 	SetUpSwagger(docs.SwaggerInfo, app)
 
+	// setup asynqmon
 	SetUpAsynqMon(app)
 
 	app.Engine.GET("/swagger/*any",
