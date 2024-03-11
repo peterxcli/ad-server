@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"dcard-backend-2024/pkg/model"
 	"dcard-backend-2024/pkg/runner"
 	"encoding/json"
@@ -16,6 +17,7 @@ import (
 	"github.com/bsm/redislock"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -39,6 +41,77 @@ type AdService struct {
 	wg         sync.WaitGroup
 	onShutdown []func()
 	Version    int // Version is the latest version of the ad
+}
+
+// DeleteAd implements model.AdService.
+func (a *AdService) DeleteAd(ctx context.Context, adID string) error {
+	ctx = context.Background()
+	// RedisLock Lock Key: lock:ad
+	lock, err := a.locker.Obtain(ctx, a.lockKey, 100*time.Millisecond, &redislock.Options{
+		RetryStrategy: redislock.LimitRetry(redislock.ExponentialBackoff(1*time.Millisecond, 5*time.Millisecond), 10),
+	})
+	if err != nil {
+		log.Printf("error obtaining lock: %v", err)
+		return err
+	}
+	defer func() {
+		// Release Lock
+		err := lock.Release(ctx)
+		if err != nil {
+			log.Printf("error releasing lock: %v", err)
+		}
+	}()
+	// Begin Transaction
+	// UPDATE ads SET is_active = false AND version = `SELECT MAX(version) FROM ads` + 1 WHERE id = adID
+	// DELETE FROM ads WHERE version < `SELECT MAX(version) FROM ads` AND is_active = false
+	// Commit Transaction
+	txn := a.db.Begin()
+	if err = txn.Error; err != nil {
+		return err
+	}
+	var maxVersion int
+	if err = txn.Raw("SELECT COALESCE(MAX(version), 0) FROM ads").Scan(&maxVersion).Error; err != nil {
+		txn.Rollback()
+		return err
+	}
+	maxVersion++
+	if err = txn.Model(&model.Ad{}).Where("id = ?", adID).
+		Update("is_active", false).
+		Update("version", maxVersion).Error; err != nil {
+		txn.Rollback()
+		return err
+	}
+	if err = txn.Delete(&model.Ad{}, "version < ? AND is_active = false", maxVersion).Error; err != nil {
+		txn.Rollback()
+		return err
+	}
+	err = txn.Commit().Error
+	if err != nil {
+		return err
+	}
+	adReqMapStr, err := json.Marshal(runner.DeleteAdRequest{AdID: adID})
+	if err != nil {
+		log.Printf("error marshalling ad request: %v", err)
+		return err
+	}
+	// Publish to Redis Stream
+	// XADD ad 0-`SELECT MAX(version) FROM ads` {"ad": "adReqJsonStr"}
+	_, err = a.redis.XAdd(ctx, &redis.XAddArgs{
+		Stream:     a.adStream,
+		NoMkStream: false,
+		Approx:     false,
+		MaxLen:     100000,
+		Values: []interface{}{
+			"ad", string(adReqMapStr),
+			"type", "delete",
+		},
+		ID: fmt.Sprintf("0-%d", maxVersion),
+	}).Result()
+	if err != nil {
+		log.Printf("error publishing to redis: %v", err)
+		return err
+	}
+	return nil
 }
 
 // Shutdown implements model.AdService.
@@ -110,13 +183,13 @@ func (a *AdService) Run() error {
 // It returns the version number of the restored ad and any error encountered.
 // The error could be ErrRecordNotFound if no ad is found or a DB connection error.
 func (a *AdService) Restore() (err error) {
-	txn := a.db.Begin()
+	txn := a.db.Begin(&sql.TxOptions{Isolation: sql.LevelRepeatableRead})
 	err = txn.Raw("SELECT COALESCE(MAX(version), 0) FROM ads").Scan(&a.Version).Error
 	if err != nil {
 		return err
 	}
 	var ads []*model.Ad
-	err = txn.Find(&ads).Error
+	err = txn.Find(&ads).Where("is_active = ?", true).Error
 	if err != nil {
 		return err
 	}
@@ -179,7 +252,6 @@ func (a *AdService) Subscribe() error {
 			for _, msg := range msgs {
 				for _, m := range msg.Messages {
 					log.Printf("received message: %v\n", m)
-					ad := &runner.CreateAdRequest{}
 					streamVersion, _ := strconv.ParseInt(strings.Split(m.ID, "-")[1], 10, 64)
 					if a.Version < int(streamVersion) {
 						a.Version = int(streamVersion)
@@ -188,8 +260,18 @@ func (a *AdService) Subscribe() error {
 						// our version is the same or higher than the stream version
 						continue
 					}
-					json.Unmarshal([]byte(m.Values["ad"].(string)), ad)
-					a.runner.RequestChan <- ad
+					switch m.Values["type"].(string) {
+					case "create":
+						payload := &runner.CreateAdRequest{}
+						json.Unmarshal([]byte(m.Values["ad"].(string)), payload)
+						a.runner.RequestChan <- payload
+					case "delete":
+						payload := &runner.DeleteAdRequest{}
+						json.Unmarshal([]byte(m.Values["ad"].(string)), payload)
+						a.runner.RequestChan <- payload
+					default:
+						log.Printf("unknown message type: %s", m.Values["type"].(string))
+					}
 				}
 			}
 		}
@@ -268,8 +350,11 @@ func (a *AdService) storeAndPublishWithLock(ctx context.Context, ad *model.Ad, r
 		NoMkStream: false,
 		Approx:     false,
 		MaxLen:     100000,
-		Values:     []interface{}{"ad", string(adReqMapStr)},
-		ID:         fmt.Sprintf("0-%d", ad.Version),
+		Values: []interface{}{
+			"ad", string(adReqMapStr),
+			"type", "create",
+		},
+		ID: fmt.Sprintf("0-%d", ad.Version),
 	}).Result()
 	if err != nil {
 		log.Printf("error publishing to redis: %v", err)
@@ -290,6 +375,11 @@ func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, er
 		return "", err
 	}
 
+	err = a.registerAdDeleteTask(ad)
+	if err != nil {
+		return "", err
+	}
+
 	select {
 	case resp := <-a.runner.ResponseChan.Load(requestID):
 		if resp, ok := resp.(*runner.CreateAdResponse); ok {
@@ -300,6 +390,23 @@ func (a *AdService) CreateAd(ctx context.Context, ad *model.Ad) (adID string, er
 	}
 
 	return "", ErrUnknown
+}
+
+func (a *AdService) registerAdDeleteTask(ad *model.Ad) error {
+	payload := &model.AsynqDeletePayload{AdID: ad.ID.String()}
+	task, err := payload.ToTask()
+	if err != nil {
+		return err
+	}
+	taskID := fmt.Sprintf("%s-%s", payload.TypeName(), ad.ID.String())
+	processTime := ad.EndAt.T().In(time.Local)
+	// FIXME: the timezone is not correct, the scheduled time in the asynq UI is utc+8, but the internal scheduler is utc+0
+	_, err = a.asynqClient.Enqueue(
+		task,
+		asynq.ProcessAt(processTime),
+		asynq.TaskID(taskID),
+	)
+	return err
 }
 
 // GetAds implements model.AdService.
