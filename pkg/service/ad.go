@@ -189,7 +189,7 @@ func (a *AdService) Restore() (err error) {
 		return err
 	}
 	var ads []*model.Ad
-	err = txn.Find(&ads).Where("is_active = ?", true).Error
+	err = txn.Where("is_active = ?", true).Find(&ads).Error
 	if err != nil {
 		return err
 	}
