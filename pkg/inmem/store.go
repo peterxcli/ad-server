@@ -68,5 +68,5 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 func (s *InMemoryStoreImpl) DeleteAd(adID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return s.DeleteAd(adID)
+	return s.adIndex.RemoveAd(s.ads[adID])
 }
