@@ -90,6 +90,9 @@ func main() {
 	// Init routes
 	router.RegisterRoutes(app, services)
 
+	// Init asynq
+	router.RegisterAsynqMux(app, services)
+
 	// setup swagger
 	// @securityDefinitions.apikey ApiKeyAuth
 	// @in header

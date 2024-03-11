@@ -25,14 +25,15 @@ import (
 type AppOpts func(app *Application)
 
 type Application struct {
-	Env         *Env
-	Conn        *gorm.DB
-	Cache       *redis.Client
-	AsynqClient *asynq.Client
-	AsynqServer *asynq.Server
-	Engine      *gin.Engine
-	RedisLock   *redislock.Client
-	Dispatcher  *dispatcher.Dispatcher
+	Env            *Env
+	Conn           *gorm.DB
+	Cache          *redis.Client
+	AsynqClient    *asynq.Client
+	AsynqServer    *asynq.Server
+	Engine         *gin.Engine
+	RedisLock      *redislock.Client
+	Dispatcher     *dispatcher.Dispatcher
+	AsyncServerMux *asynq.ServeMux
 }
 
 func App(opts ...AppOpts) *Application {
@@ -45,6 +46,7 @@ func App(opts ...AppOpts) *Application {
 	engine := gin.New()
 	adInMemStore := inmem.NewInMemoryStore()
 	dispatcher := dispatcher.NewDispatcher(adInMemStore)
+	asynqServerMux := asynq.NewServeMux()
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -54,14 +56,15 @@ func App(opts ...AppOpts) *Application {
 	time.Local = tz
 
 	app := &Application{
-		Env:         env,
-		Conn:        db,
-		Cache:       cache,
-		Engine:      engine,
-		RedisLock:   redisLock,
-		Dispatcher:  dispatcher,
-		AsynqClient: asynqClient,
-		AsynqServer: asynqServer,
+		Env:            env,
+		Conn:           db,
+		Cache:          cache,
+		Engine:         engine,
+		RedisLock:      redisLock,
+		Dispatcher:     dispatcher,
+		AsynqClient:    asynqClient,
+		AsynqServer:    asynqServer,
+		AsyncServerMux: asynqServerMux,
 	}
 
 	for _, opt := range opts {
@@ -87,6 +90,7 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	gin.SetMode(gin.TestMode)
 	adInMemStore := inmem.NewInMemoryStore()
 	dispatcher := dispatcher.NewDispatcher(adInMemStore)
+	asynqServerMux := asynq.NewServeMux()
 
 	// Set timezone
 	tz, err := time.LoadLocation(env.Server.TimeZone)
@@ -96,14 +100,15 @@ func NewTestApp(opts ...AppOpts) (*Application, *Mocks) {
 	time.Local = tz
 
 	app := &Application{
-		Env:         env,
-		Conn:        db,
-		Cache:       cache,
-		Engine:      engine,
-		RedisLock:   redisLock,
-		Dispatcher:  dispatcher,
-		AsynqClient: asynqClient,
-		AsynqServer: asynqServer,
+		Env:            env,
+		Conn:           db,
+		Cache:          cache,
+		Engine:         engine,
+		RedisLock:      redisLock,
+		Dispatcher:     dispatcher,
+		AsynqClient:    asynqClient,
+		AsynqServer:    asynqServer,
+		AsyncServerMux: asynqServerMux,
 	}
 
 	mocks := &Mocks{
@@ -127,7 +132,13 @@ func (app *Application) Run(services *Services) {
 
 	serverErrors := make(chan error, 1)
 
-	go RunAsynq(app, services, serverErrors)
+	go func() {
+		log.Println("Starting Asynq Worker...")
+		if err := app.AsynqServer.Run(app.AsyncServerMux); err != nil {
+			log.Println(err)
+			serverErrors <- err
+		}
+	}()
 
 	go func() {
 		log.Printf("Background Services are running...")
