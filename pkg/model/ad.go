@@ -2,10 +2,16 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/lib/pq"
 	"gorm.io/gorm"
+)
+
+var (
+	TypeEventDelete = "event:delete"
 )
 
 type Ad struct {
@@ -49,6 +55,26 @@ type GetAdsPageResponse struct {
 	Total int   `json:"total"`
 }
 
+type AsynqDeletePayload struct {
+	AdID string `json:"ad_id"`
+}
+
+func (a *AsynqDeletePayload) ToTask() (*asynq.Task, error) {
+	payload, err := json.Marshal(a)
+	if err != nil {
+		return nil, err
+	}
+	return asynq.NewTask(TypeEventDelete, payload), nil
+}
+
+func (a *AsynqDeletePayload) FromTask(task *asynq.Task) error {
+	return json.Unmarshal(task.Payload(), a)
+}
+
+func (AsynqDeletePayload) TypeName() string {
+	return TypeEventDelete
+}
+
 type CreateAdRequest struct {
 	Title    string     `json:"title" binding:"required,min=5,max=100"`
 	Content  string     `json:"content" binding:"required"`
@@ -70,6 +96,7 @@ type CreateAdResponse struct {
 type AdService interface {
 	CreateAd(ctx context.Context, ad *Ad) (adID string, er error)
 	GetAds(ctx context.Context, req *GetAdRequest) ([]*Ad, int, error)
+	DeleteAd(ctx context.Context, adID string) error
 	// Subscribe to the redis stream
 	Subscribe() error
 	Restore() error
@@ -77,9 +104,15 @@ type AdService interface {
 	Shutdown(ctx context.Context) error
 }
 
+type TaskService interface {
+	HandleDeleteAd(ctx context.Context, t *asynq.Task) error
+	RegisterTaskHandler(mux *asynq.ServeMux)
+}
+
 type InMemoryStore interface {
 	CreateAd(ad *Ad) (string, error)
 	GetAds(req *GetAdRequest) ([]*Ad, int, error)
+	DeleteAd(adID string) error
 	// Restore the ads from the db, and return the highest version in the store
 	CreateBatchAds(ads []*Ad) (err error)
 }
