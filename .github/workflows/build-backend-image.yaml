@@ -1,49 +1,31 @@
-env:
-  DOMAIN: dcard-backend-intern-2024.peterxcli.dev
+name: Build and Push Docker Backend Image on Tag
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-backend
 
 jobs:
-  deploy:
+  build:
+    permissions: write-all
     runs-on: ubuntu-latest
-    services:
-      redis:
-        image: redis
-        ports:
-          - 6379:6379
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
+      - name: Log into the Container registry
+        uses: docker/login-action@v3
         with:
-          go-version: '1.21.6'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Swagger UI
-        uses: Legion2/swagger-ui-action@v1
+      - name: Extract metadata for the Docker image
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          output: public/docs
-          spec-file: docs/swagger.json
-
-      - name: Test and Coverage
-        run: |
-          mkdir -p public/coverage
-          make test
-          go tool cover -html=coverage.out -o public/coverage/index.html
-        env:
-          APP_REDIS_HOST: localhost
-          APP_REDIS_PORT: 6379
-
-      - name: Setup CNAME
-        run: echo $DOMAIN > public/CNAME
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./public
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
