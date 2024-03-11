@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRunner_IsRunning(t *testing.T) {
+func TestDispatcher_IsRunning(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
 		ResponseChan *syncmap.Map
@@ -46,7 +46,7 @@ func TestRunner_IsRunning(t *testing.T) {
 				}
 				select {
 				case <-ctx.Done():
-					t.Errorf("Runner.IsRunning() = %v, want %v", r.IsRunning(), tt.want)
+					t.Errorf("Dispatcher.IsRunning() = %v, want %v", r.IsRunning(), tt.want)
 				default:
 				}
 			}
@@ -54,7 +54,7 @@ func TestRunner_IsRunning(t *testing.T) {
 	}
 }
 
-func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
+func TestDispatcher_handleCreateBatchAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
 		ResponseChan *syncmap.Map
@@ -109,18 +109,18 @@ func TestRunner_handleCreateBatchAdRequest(t *testing.T) {
 			case resp := <-tt.fields.ResponseChan.Load(tt.args.req.RequestID):
 				if resp, ok := resp.(*CreateAdResponse); ok {
 					if resp.Err != nil {
-						t.Errorf("Runner.handleCreateBatchAdRequest() = %v, want %v", resp.Err, nil)
+						t.Errorf("Dispatcher.handleCreateBatchAdRequest() = %v, want %v", resp.Err, nil)
 					}
 					assert.Equal(t, resp.AdID, "")
 				}
 			case <-time.After(3 * time.Second):
-				t.Errorf("Runner.handleCreateBatchAdRequest() = %v, want %v", nil, nil)
+				t.Errorf("Dispatcher.handleCreateBatchAdRequest() = %v, want %v", nil, nil)
 			}
 		})
 	}
 }
 
-func TestRunner_handleCreateAdRequest(t *testing.T) {
+func TestDispatcher_handleCreateAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
 		ResponseChan *syncmap.Map
@@ -173,18 +173,18 @@ func TestRunner_handleCreateAdRequest(t *testing.T) {
 			case resp := <-tt.fields.ResponseChan.Load(tt.args.req.RequestID):
 				if resp, ok := resp.(*CreateAdResponse); ok {
 					if resp.Err != nil {
-						t.Errorf("Runner.handleCreateAdRequest() = %v, want %v", resp.Err, nil)
+						t.Errorf("Dispatcher.handleCreateAdRequest() = %v, want %v", resp.Err, nil)
 					}
 					assert.Equal(t, resp.AdID, tt.args.req.Ad.ID.String())
 				}
 			case <-time.After(3 * time.Second):
-				t.Errorf("Runner.handleCreateAdRequest() = %v, want %v", nil, nil)
+				t.Errorf("Dispatcher.handleCreateAdRequest() = %v, want %v", nil, nil)
 			}
 		})
 	}
 }
 
-func TestRunner_handleGetAdRequest(t *testing.T) {
+func TestDispatcher_handleGetAdRequest(t *testing.T) {
 	type fields struct {
 		RequestChan  chan interface{}
 		ResponseChan *syncmap.Map
@@ -235,24 +235,24 @@ func TestRunner_handleGetAdRequest(t *testing.T) {
 					assert.ErrorIs(t, resp.Err, tt.expectErr)
 				}
 			case <-time.After(3 * time.Second):
-				t.Errorf("Runner.handleGetAdRequest() = %v, want %v", nil, nil)
+				t.Errorf("Dispatcher.handleGetAdRequest() = %v, want %v", nil, nil)
 			}
 		})
 	}
 }
 
-func TestRunner_Start(t *testing.T) {
+func TestDispatcher_Start(t *testing.T) {
 	type fields struct {
 	}
 	sharedStore := inmem.NewInMemoryStore()
 	sharedRequestChan := make(chan interface{})
 	sharedResponseChan := &syncmap.Map{}
-	sharedRunner := &Dispatcher{
+	sharedDispatcher := &Dispatcher{
 		RequestChan:  sharedRequestChan,
 		ResponseChan: sharedResponseChan,
 		Store:        sharedStore,
 	}
-	go sharedRunner.Start()
+	go sharedDispatcher.Start()
 	tests := []struct {
 		name      string
 		fields    fields
@@ -327,13 +327,13 @@ func TestRunner_Start(t *testing.T) {
 					assert.ErrorIs(t, resp.Error(), tt.expectErr)
 				}
 			case <-time.After(3 * time.Second):
-				t.Errorf("Runner.Start() = %v, want %v", nil, nil)
+				t.Errorf("Dispatcher.Start() = %v, want %v", nil, nil)
 			}
 		})
 	}
 }
 
-func TestNewRunner(t *testing.T) {
+func TestNewDispatcher(t *testing.T) {
 	type args struct {
 		store model.InMemoryStore
 	}
@@ -343,7 +343,7 @@ func TestNewRunner(t *testing.T) {
 		want *Dispatcher
 	}{
 		{
-			name: "Test NewRunner",
+			name: "Test NewDispatcher",
 			args: args{
 				store: inmem.NewInMemoryStore(),
 			},
@@ -359,7 +359,7 @@ func TestNewRunner(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.want.Store = tt.args.store
 			if got := NewDispatcher(tt.args.store); !reflect.DeepEqual(got.Store, tt.want.Store) {
-				t.Errorf("NewRunner() = %v, want %v", got, tt.want)
+				t.Errorf("NewDispatcher() = %v, want %v", got, tt.want)
 			}
 		})
 	}
