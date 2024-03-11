@@ -18,6 +18,7 @@ import (
 	"github.com/bsm/redislock"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
 	"github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
@@ -53,6 +54,7 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
+		app.AsynqClient,
 	)
 	services = &bootstrap.Services{
 		AdService: adService,
@@ -169,7 +171,7 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 				NoMkStream: false,
 				Approx:     false,
 				MaxLen:     100000,
-				Values:     []interface{}{"ad", string(requestBytes)},
+				Values:     []interface{}{"ad", string(requestBytes), "type", "create"},
 				ID:         fmt.Sprintf("0-%d", tt.args.ad.Version),
 			}).SetVal(fmt.Sprintf("0-%d", tt.args.ad.Version))
 			mocks.CacheMock.CustomMatch(func(expected, actual []interface{}) error {
@@ -184,12 +186,13 @@ func TestAdService_storeAndPublishWithLock(t *testing.T) {
 
 func TestAdService_CreateAd(t *testing.T) {
 	type fields struct {
-		runner   *runner.Runner
-		db       *gorm.DB
-		redis    *redis.Client
-		locker   *redislock.Client
-		lockKey  string
-		adStream string
+		runner      *runner.Runner
+		db          *gorm.DB
+		redis       *redis.Client
+		locker      *redislock.Client
+		lockKey     string
+		adStream    string
+		asynqClient *asynq.Client
 	}
 	type args struct {
 		ctx context.Context
@@ -205,12 +208,13 @@ func TestAdService_CreateAd(t *testing.T) {
 		{
 			name: "test store and publish with lock",
 			fields: fields{
-				runner:   app.Runner,
-				db:       app.Conn,
-				redis:    app.Cache,
-				locker:   app.RedisLock,
-				lockKey:  lockKey + uuid.New().String(),
-				adStream: adStream + uuid.New().String(),
+				runner:      app.Runner,
+				db:          app.Conn,
+				redis:       app.Cache,
+				locker:      app.RedisLock,
+				lockKey:     lockKey + uuid.New().String(),
+				adStream:    adStream + uuid.New().String(),
+				asynqClient: app.AsynqClient,
 			},
 			args: args{
 				ctx: context.Background(),
@@ -234,12 +238,13 @@ func TestAdService_CreateAd(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			a := &AdService{
-				runner:   tt.fields.runner,
-				db:       tt.fields.db,
-				redis:    tt.fields.redis,
-				locker:   tt.fields.locker,
-				lockKey:  tt.fields.lockKey,
-				adStream: tt.fields.adStream,
+				runner:      tt.fields.runner,
+				db:          tt.fields.db,
+				redis:       tt.fields.redis,
+				locker:      tt.fields.locker,
+				lockKey:     tt.fields.lockKey,
+				adStream:    tt.fields.adStream,
+				asynqClient: tt.fields.asynqClient,
 			}
 			mocks.DBMock.ExpectBegin()
 			mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").

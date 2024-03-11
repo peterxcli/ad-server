@@ -63,6 +63,17 @@ func (r *Runner) handleGetAdRequest(req *GetAdRequest) {
 	}
 }
 
+func (r *Runner) handleDeleteAdRequest(req *DeleteAdRequest) {
+	_ = r.Store.DeleteAd(req.AdID)
+
+	// if r.ResponseChan.Exists(req.RequestID) {
+	// 	r.ResponseChan.Load(req.RequestID) <- &DeleteAdResponse{
+	// 		Response: Response{RequestID: req.RequestID},
+	// 		Err:      err,
+	// 	}
+	// }
+}
+
 func (r *Runner) Start() {
 	r.Running.Store(true)
 	log.Println("Runner started")
@@ -77,6 +88,8 @@ func (r *Runner) Start() {
 				r.handleCreateAdRequest(req.(*CreateAdRequest))
 			case *GetAdRequest:
 				go r.handleGetAdRequest(req.(*GetAdRequest))
+			case *DeleteAdRequest:
+				r.handleDeleteAdRequest(req.(*DeleteAdRequest))
 			}
 		}
 	}

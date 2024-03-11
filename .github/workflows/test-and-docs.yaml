@@ -2,9 +2,12 @@ env:
   DOMAIN: dcard-backend-intern-2024.peterxcli.dev
 
 on:
+  pull_request:
+    branches:
+      - "*"
   push:
     branches:
-      - main
+      - "*"
 
 jobs:
   deploy:
@@ -32,9 +35,11 @@ jobs:
           go tool cover -html=coverage.out -o public/coverage/index.html
 
       - name: Setup CNAME
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: echo $DOMAIN > public/CNAME
 
       - name: Deploy to GitHub Pages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

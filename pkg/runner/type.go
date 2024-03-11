@@ -86,3 +86,18 @@ type GetAdResponse struct {
 func (r *GetAdResponse) Error() error {
 	return r.Err
 }
+
+type DeleteAdRequest struct {
+	Request
+	AdID string
+}
+
+type DeleteAdResponse struct {
+	IResult
+	Response
+	Err error
+}
+
+func (r *DeleteAdResponse) Error() error {
+	return r.Err
+}

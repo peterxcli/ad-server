@@ -64,9 +64,12 @@ func boot() (app *bootstrap.Application, services *bootstrap.Services, mocks *bo
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
+		app.AsynqClient,
 	)
+	taskService := service.NewTaskService(adService)
 	services = &bootstrap.Services{
-		AdService: adService,
+		AdService:   adService,
+		TaskService: taskService,
 	}
 	mocks.DBMock.ExpectBegin()
 	mocks.DBMock.ExpectQuery("SELECT COALESCE\\(MAX\\(version\\), 0\\) FROM ads").

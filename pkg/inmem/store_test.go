@@ -280,3 +280,32 @@ func BenchmarkReadAds(b *testing.B) {
 		TestReadAdsPerformanceAndAccuracy(&testing.T{})
 	}
 }
+
+func TestInMemoryStoreImpl_DeleteAd(t *testing.T) {
+	type fields struct {
+		ads     map[string]*model.Ad
+		adIndex AdIndex
+	}
+	type args struct {
+		adID string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &InMemoryStoreImpl{
+				ads:     tt.fields.ads,
+				adIndex: tt.fields.adIndex,
+			}
+			if err := s.DeleteAd(tt.args.adID); (err != nil) != tt.wantErr {
+				t.Errorf("InMemoryStoreImpl.DeleteAd() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

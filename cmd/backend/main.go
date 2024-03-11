@@ -10,6 +10,8 @@ import (
 	"net/http/httputil"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
+	"github.com/hibiken/asynqmon"
 	swaggerfiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/swag"
@@ -21,6 +23,22 @@ func SetUpSwagger(spec *swag.Spec, app *bootstrap.Application) {
 	spec.Schemes = []string{"http", "https"}
 	spec.Title = "Dcard Internship Assignment 2024 - Advertisement Backend API"
 	spec.Description = "This is the API document for the Dcard Internship Assignment 2024 - Advertisement Backend"
+}
+
+func SetUpAsynqMon(app *bootstrap.Application) {
+	readonly := false
+	h := asynqmon.New(asynqmon.Options{
+		RootPath:     "/monitoring", // RootPath specifies the root for asynqmon app
+		RedisConnOpt: asynq.RedisClientOpt{Addr: app.Cache.Options().Addr},
+		ReadOnly:     readonly,
+	})
+
+	// Use Gin's Group function to create a route group with the specified prefix
+	monitoringGroup := app.Engine.Group(h.RootPath())
+
+	// Use the Gin.WrapH function to convert Asynqmon's http.Handler to a Gin-compatible handler
+	// and register it to handle all routes under "/monitoring/"
+	monitoringGroup.Any("/*action", gin.WrapH(h))
 }
 
 func ReverseProxy() gin.HandlerFunc {
@@ -59,10 +77,14 @@ func main() {
 		app.Conn,
 		app.Cache,
 		app.RedisLock,
+		app.AsynqClient,
 	)
 
+	taskService := service.NewTaskService(adService)
+
 	services := &bootstrap.Services{
-		AdService: adService,
+		AdService:   adService,
+		TaskService: taskService,
 	}
 
 	// Init routes
@@ -73,6 +95,9 @@ func main() {
 	// @in header
 	// @name Authorization
 	SetUpSwagger(docs.SwaggerInfo, app)
+
+	// setup asynqmon
+	SetUpAsynqMon(app)
 
 	app.Engine.GET("/swagger/*any",
 		ginSwagger.WrapHandler(
