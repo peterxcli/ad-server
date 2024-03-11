@@ -2,27 +2,37 @@
 
 ## Overview
 
-看到這個題目要求的時候, 就在想說這個 QPS > 10000 是單純可以用一個 redis 就可以解決的問題嗎?, 所以我就開始思考這個問題, 並且想到了一個比較有趣的解法, 這個解法是用一個 in-memory database 來處理這個問題, 並且用一個 redis stream 來處理 log ordering, 並且用 postgresql 來處理持久化的部分, 因為是 local 的 in-memory database, 所以只要透過像是 K8s Deployment 或是 `docker compose --scale` 就可以無限擴展讀取的操作的速度, 不過寫入的話就還是受限於 `max(redis, postgres)` 的速度, 我在實作裡已經盡力讓系統是 fault tolerance & consistency 的, 如果有人注意到我有哪些 case 沒有考慮到或是處理得不好可以優化的地方, 再麻煩各位提出來, 謝謝!
+When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or `docker compose --scale`. However, write operations are still limited by the speed of `max(redis, postgres)`. In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
 
 ![alt text](./img/overview.png)
 
-The main components in my system design idea have three parts, which can correspond to the `Servers` in the above figure respectively.
+![alt text](./img/rsm.png)
+
+The main components in my system design idea have five parts, which can correspond to the `Servers` in the above figure respectively.
 
 ### Components
 
-#### State Machine
+#### Business State Machine (Service State, Reply Cache)
 
 For each instance, it is a state machine that can handle the advertisement CRUD operation and the range query operation. In the above diagram, it should use single-threaded to guarantee the read and write order. In Our Scenario, the consistency isn't the most important thing, so we can use `Readers–writer lock` to handle the concurrent read, the write operation is still single-threaded.
 
-#### Consensus & Log Ordering
+#### Replicated Logs (Ordering, Log Management)
 
 It is hard to implement a Linearizable Log System. so I can use `Redis Stream` to handle the log ordering and the log replication.
 
 > Use redis lock to prevent the concurrent write to postgres and redis stream
 
-#### Snapshot & Recovery
+#### Snapshot & Recovery (Catch-up, Failure Detection)
 
 The state machine can be recovered from the snapshot, and the snapshot only modified if there is a new create, update, or delete operation. The snapshot can be stored in postgresql, and the recovery process can be done by the snapshot and the log to prevent the state machine need to replay all the log from the beginning. The concept is similar to the `AOF` and `RDB` in redis.
+
+#### Remove Outdated Data from memory
+
+Since we didnt use the interval tree to handle the range query, we need to remove the outdated data from the in-memory database, so we need to use some `scheduler` to remove the outdated data from the in-memory database.
+
+I choose the [`asynq`](https://github.com/hibiken/asynq) to act as the scheduler
+
+> after multiple worker race for handling the delete task, the delete log would be also published to the redis stream, so the state machine can also handle the delete operation, this method also prevent the `Restore` operation from reading and serving stale data.
 
 ## Implement Practice
 
@@ -57,7 +67,9 @@ type Ad struct {
 - all instance subscribe with `XREAD` to get the log
 - the inmemory database for each replica only update if the replica receive the log from the redis stream
 
-TODO: image from redis insight
+![alt text](./img/redis-insight.png)
+
+> the request id is for recognizing which client should return the response to.
 
 ### In-Memory Database (Local)
 
@@ -68,6 +80,7 @@ TODO: image from redis insight
   - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
   - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
   - upd: I have tried to implement the multi-indexing, the write performance is down, but the read performance is now 1166960 QPS, so I think it's worth it - [commit detail](https://github.com/peterxcli/dcard-backend-2024/commit/028f68a2b1e770aac0754331826fd3110aa0b977)
+  - TODO: define the multi-indexing with priority, and use reflect to generate the index function(tree structure), and use concurrent map to store the index, we would add the index concurrently
 - ~~implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree~~
   - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
   - Currently, I just iterate all the advertisement and filter the result by the condition
@@ -90,6 +103,14 @@ TODO: image from redis insight
 - the snapshot can be stored in postgresql
 - retry if the snapshot version and the log version is not match
 - if there aren't any problem, start to subscribe the log from the snapshot version and replay the log
+
+### Sanitize the Stale Data
+
+- Use `asynq` to act as the scheduler
+
+![alt text](./img/asynq-ui.png)
+
+- after the time display in the `process in` column, the advertisement deleted operation would consider as a log which is persisted in the redis stream, so the state machine can also handle the delete operation, this method also prevent the `Restore` operation from reading and serving stale data.
 
 ## Testing
 
