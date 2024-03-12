@@ -1,7 +1,6 @@
 import { randomIntBetween, randomItem } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 import http from 'k6/http';
 import { sleep } from 'k6';
-let config = require('./config.json');
 
 export const options = {
 	scenarios: {
@@ -16,12 +15,12 @@ export const options = {
 	},
 };
 
-let urlString = 'http://' + config.host + "/api/v1/ad";
+let urlString = "http://127.0.0.1:8000/api/v1/ad";
 
 const limits = [5, 10, 15];
 const genders = ['M', 'F'];
 const countries = ['TW', 'JP'];
-const platforms = ['ANDROID', 'IOS', 'WEB'];
+const platforms = ['android', 'ios', 'web'];
 
 export default function () {
 	const limit = randomItem(limits);
