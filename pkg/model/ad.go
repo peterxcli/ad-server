@@ -48,7 +48,7 @@ func (a *Ad) GetValueByKey(key string) ([]interface{}, error) {
 		}
 		defaultVal := reflect.Zero(reflect.TypeOf(a.AgeStart)).Interface()
 		slice = append(slice, defaultVal)
-		slice = UniqueSlice(slice)
+		// slice = UniqueSlice(slice)
 		return slice, nil
 	} else if fieldVal.Kind() == reflect.Slice {
 		length := fieldVal.Len()
@@ -58,7 +58,7 @@ func (a *Ad) GetValueByKey(key string) ([]interface{}, error) {
 		}
 		defaultVal := reflect.Zero(fieldVal.Type().Elem()).Interface()
 		slice = append(slice, defaultVal)
-		slice = UniqueSlice(slice)
+		// slice = UniqueSlice(slice)
 		return slice, nil
 	} else {
 		// If it's not a slice, wrap the value in a slice of interfaces.
@@ -66,7 +66,7 @@ func (a *Ad) GetValueByKey(key string) ([]interface{}, error) {
 		slice[0] = fieldVal.Interface()
 		defaultVal := reflect.Zero(fieldVal.Type()).Interface()
 		slice = append(slice, defaultVal)
-		slice = UniqueSlice(slice)
+		// slice = UniqueSlice(slice)
 		return slice, nil
 	}
 }

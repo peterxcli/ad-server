@@ -4,6 +4,7 @@ import (
 	"dcard-backend-2024/pkg/model"
 	"fmt"
 	"log"
+	"sync"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/wangjia184/sortedset"
@@ -30,23 +31,31 @@ func (g *IndexInternalNode) AddAd(ad *model.Ad) {
 		return
 	}
 
-	for _, v := range values {
-		field := FieldStringer{Value: v}
-		child, exists := g.Children.Get(field)
-		if !exists {
-			nextKey := model.Ad{}.GetNextIndexKey(g.Key) // This function should determine the next key based on the current key
-			if nextKey == "" {
-				// This is a leaf node
-				child = NewIndexLeafNode()
-			} else {
-				// This is an internal node
-				child = NewIndexInternalNode(nextKey)
-			}
-			g.Children.Set(field, child)
-		}
+	var wg sync.WaitGroup
 
-		child.AddAd(ad)
+	for _, v := range values {
+		wg.Add(1)
+		go func(v interface{}) {
+			defer wg.Done()
+
+			field := FieldStringer{Value: v}
+
+			child, exists := g.Children.Get(field)
+			if !exists {
+				nextKey := model.Ad{}.GetNextIndexKey(g.Key)
+				if nextKey == "" {
+					child = NewIndexLeafNode()
+				} else {
+					child = NewIndexInternalNode(nextKey)
+				}
+				g.Children.Set(field, child)
+			}
+
+			child.AddAd(ad)
+		}(v)
 	}
+
+	wg.Wait()
 }
 
 // GetAd implements IndexNode.
@@ -98,15 +107,20 @@ func NewIndexInternalNode(key string) IndexNode {
 }
 
 type IndexLeafNode struct {
+	mu  sync.RWMutex
 	Ads *sortedset.SortedSet // map[string]*model.Ad
 }
 
 func (g *IndexLeafNode) AddAd(ad *model.Ad) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.Ads.AddOrUpdate(ad.ID.String(), sortedset.SCORE(ad.CreatedAt.T().Unix()), ad)
 }
 
 // GetAd implements IndexNode.
 func (g *IndexLeafNode) GetAd(req *model.GetAdRequest) ([]*model.Ad, error) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
 	ad := g.Ads.GetByRankRange(req.Offset, req.Offset+req.Limit, false)
 	ret := make([]*model.Ad, len(ad))
 	for i, a := range ad {
@@ -117,6 +131,8 @@ func (g *IndexLeafNode) GetAd(req *model.GetAdRequest) ([]*model.Ad, error) {
 
 // DeleteAd implements IndexNode.
 func (g *IndexLeafNode) DeleteAd(ad *model.Ad) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	g.Ads.Remove(ad.ID.String())
 }
 

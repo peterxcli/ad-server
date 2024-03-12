@@ -14,7 +14,7 @@ docker/volumes/
 
 # Generated
 domain/query
-
+*pprof
 # logs
 logs/
 *.log

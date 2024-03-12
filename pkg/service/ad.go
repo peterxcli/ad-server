@@ -213,7 +213,7 @@ func (a *AdService) Restore() (err error) {
 			}
 			return resp.Err
 		}
-	case <-time.After(3 * time.Second):
+	case <-time.After(10 * time.Second):
 		return ErrTimeout
 	}
 	return ErrUnknown
