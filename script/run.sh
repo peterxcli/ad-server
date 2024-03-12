@@ -74,7 +74,7 @@ case "$action" in
         fi
         ;;
 
-    migrate|run|serve|test|bot)
+    migrate|run|serve|test|bot|inject)
         export_env $mode
         if [ "$action" = "migrate" ]; then
             go run ./cmd/migrate/migrate.go
@@ -88,6 +88,8 @@ case "$action" in
             go test -coverprofile=coverage.out -v ./...
 	        go tool cover -html=coverage.out
 	        go tool cover -html=coverage.out -o coverage.html
+        elif [ "$action" = "inject" ]; then
+            go run ./cmd/inject/main.go
         else
             echo "Error: Invalid command. Choose from (generate | migrate | run | serve)"
             exit 1

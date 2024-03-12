@@ -1,4 +1,4 @@
-.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot bench k6 coverage
+.PHONY: help install build serve generate dev-up dev-migrate dev-down dev-teardown stage-up test run docs bot bench k6 coverage install-k6 inject
 
 BLUE = \033[34m
 NC = \033[0m
@@ -70,3 +70,6 @@ install-k6: ## Install k6
 
 k6: ## Run the k6 tests
 	cd k6 && XK6_BROWSER_LOG=error ./k6 run --out web-dashboard=export=test-report.html script.js
+
+inject: ## Inject the data
+	./script/run.sh dev inject
