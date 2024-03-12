@@ -95,10 +95,9 @@ type Ad struct {
 ![alt text](./img/biogo-interval-inmem.png)
 3. Just iterate all the advertisement and filter the result by the condition
 ![alt text](./img/iterate-inmem.png)
-4. compound index with nested map
-TODO: add the benchmark result image
+4. compound index with nested map - 1000000 RPS
 ![alt text](./img/compound-index-nested-map.png)
-1. compound index generalization (provide the easy-to-use index API function and the index priority, tree structure)
+1. compound index generalization (provide the easy-to-use index API function and the index priority, tree structure) - 800000 RPS
   ![alt text](./img/compound-index-tree.png)
   provide a flexible API for the developer to define the index, but the performance reduce about 10%, move some coding complexity to time & space complexity
 
