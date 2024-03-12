@@ -71,7 +71,7 @@ type Ad struct {
 
 > the request id is for recognizing which client should return the response to.
 
-### In-Memory Database (Local)
+### In-Memory Database (Local State Machine)
 
 - multi-read/single-write lock
 - implement the advertisement store by map with id primary key
@@ -80,7 +80,7 @@ type Ad struct {
   - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
   - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
   - upd: I have tried to implement the multi-indexing, the write performance is down, but the read performance is now 1166960 QPS, so I think it's worth it - [commit detail](https://github.com/peterxcli/dcard-backend-2024/commit/028f68a2b1e770aac0754331826fd3110aa0b977)
-  - TODO: define the multi-indexing with priority, and use reflect to generate the index function(tree structure), and use concurrent map to store the index, we would add the index concurrently
+  - define the multi-indexing with priority, and use reflect to generate the index function(tree structure), and use concurrent map to store the index, we would add the index concurrently, the result read performance become 800000 QPS
 - ~~implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree~~
   - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
   - Currently, I just iterate all the advertisement and filter the result by the condition
@@ -95,6 +95,12 @@ type Ad struct {
 ![alt text](./img/biogo-interval-inmem.png)
 3. Just iterate all the advertisement and filter the result by the condition
 ![alt text](./img/iterate-inmem.png)
+4. compound index with nested map
+TODO: add the benchmark result image
+![alt text](./img/compound-index-nested-map.png)
+1. compound index generalization (provide the easy-to-use index API function and the index priority, tree structure)
+  ![alt text](./img/compound-index-tree.png)
+  provide a flexible API for the developer to define the index, but the performance reduce about 10%, move some coding complexity to time & space complexity
 
 ### Fault Recovery
 
