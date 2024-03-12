@@ -1,6 +1,6 @@
 # Build Stage
-FROM golang:1.21 AS build
-
+FROM golang:1.21-alpine AS build
+RUN apk add --no-cache git
 # Set the working directory
 WORKDIR /app
 
@@ -10,17 +10,15 @@ COPY . .
 # Download all dependencies
 RUN go mod download
 
-# Set CGO_ENABLED to 1
-# ENV CGO_ENABLED=1
-
 # Build the Go application
-RUN CGO_ENABLED=1 GOOS=linux go build -o /app/main ./cmd/backend/main.go
+RUN go build -o /app/main ./cmd/backend/main.go
 
 # Runtime Stage
-FROM busybox AS runtime
+FROM alpine:latest AS runtime
+RUN apk --no-cache add ca-certificates
 
 # Copy the binary from the build stage to the runtime stage
-COPY --from=build /app/main /app
-
+COPY --from=build /app/main /app/main
+WORKDIR /app
 # Set the entry point to execute the binary directly
-ENTRYPOINT ["/app"]
+ENTRYPOINT /app/main
