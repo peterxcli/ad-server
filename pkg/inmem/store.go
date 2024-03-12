@@ -18,16 +18,16 @@ var (
 // InMemoryStoreImpl is an in-memory ad store implementation
 type InMemoryStoreImpl struct {
 	// ads maps ad IDs to ads
-	ads     map[string]*model.Ad
-	adIndex AdIndex
-	mutex   sync.RWMutex
+	ads         map[string]*model.Ad
+	adIndexRoot IndexNode
+	mutex       sync.RWMutex
 }
 
 func NewInMemoryStore() model.InMemoryStore {
 	return &InMemoryStoreImpl{
-		ads:     make(map[string]*model.Ad),
-		adIndex: NewAdIndex(),
-		mutex:   sync.RWMutex{},
+		ads:         make(map[string]*model.Ad),
+		adIndexRoot: NewIndexInternalNode(model.Ad{}.GetNextIndexKey("")),
+		mutex:       sync.RWMutex{},
 	}
 }
 
@@ -39,7 +39,7 @@ func (s *InMemoryStoreImpl) CreateBatchAds(ads []*model.Ad) (err error) {
 
 	for _, ad := range ads {
 		s.ads[ad.ID.String()] = ad
-		_ = s.adIndex.AddAd(ad)
+		s.adIndexRoot.AddAd(ad)
 	}
 	return nil
 }
@@ -49,7 +49,7 @@ func (s *InMemoryStoreImpl) CreateAd(ad *model.Ad) (string, error) {
 	defer s.mutex.Unlock()
 
 	s.ads[ad.ID.String()] = ad
-	_ = s.adIndex.AddAd(ad)
+	s.adIndexRoot.AddAd(ad)
 	return ad.ID.String(), nil
 }
 
@@ -57,7 +57,7 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 	s.mutex.RLock()
 	defer s.mutex.RUnlock()
 
-	ads, err = s.adIndex.GetAdIDs(req)
+	ads, err = s.adIndexRoot.GetAd(req)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -68,5 +68,6 @@ func (s *InMemoryStoreImpl) GetAds(req *model.GetAdRequest) (ads []*model.Ad, co
 func (s *InMemoryStoreImpl) DeleteAd(adID string) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	return s.adIndex.RemoveAd(s.ads[adID])
+	s.adIndexRoot.DeleteAd(s.ads[adID])
+	return nil
 }

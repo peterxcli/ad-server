@@ -125,7 +125,7 @@ func TestAdController_GetAd(t *testing.T) {
 					"limit":    {"10"},
 				},
 			},
-			expectStatus: http.StatusNotFound,
+			expectStatus: http.StatusOK,
 		},
 		{
 			name: "Test GetAd BadRequest: invalid age",

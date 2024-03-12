@@ -359,7 +359,7 @@ func TestAdService_GetAds(t *testing.T) {
 			},
 			want:    nil,
 			want1:   0,
-			wantErr: true,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {

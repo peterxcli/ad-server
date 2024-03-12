@@ -3,6 +3,8 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
@@ -31,6 +33,71 @@ type Ad struct {
 	CreatedAt CustomTime `gorm:"type:timestamp" json:"created_at"`
 }
 
+// GetValueByKey returns the value of the field with the given key.
+// If the field is a slice, it returns a slice of interfaces.
+// If the field is a single value, it returns a slice of length 1.
+// You can also add custom logic for specific fields, but still return a slice of interfaces.
+func (a *Ad) GetValueByKey(key string) ([]interface{}, error) {
+	v := reflect.ValueOf(*a)
+	fieldVal := v.FieldByName(key)
+
+	if key == "Age" {
+		slice := make([]interface{}, a.AgeEnd-a.AgeStart+1)
+		for i := a.AgeStart; i <= a.AgeEnd; i++ {
+			slice[i-a.AgeStart] = i
+		}
+		defaultVal := reflect.Zero(reflect.TypeOf(a.AgeStart)).Interface()
+		slice = append(slice, defaultVal)
+		slice = UniqueSlice(slice)
+		return slice, nil
+	} else if fieldVal.Kind() == reflect.Slice {
+		length := fieldVal.Len()
+		slice := make([]interface{}, length)
+		for i := 0; i < length; i++ {
+			slice[i] = fieldVal.Index(i).Interface()
+		}
+		defaultVal := reflect.Zero(fieldVal.Type().Elem()).Interface()
+		slice = append(slice, defaultVal)
+		slice = UniqueSlice(slice)
+		return slice, nil
+	} else {
+		// If it's not a slice, wrap the value in a slice of interfaces.
+		slice := make([]interface{}, 1)
+		slice[0] = fieldVal.Interface()
+		defaultVal := reflect.Zero(fieldVal.Type()).Interface()
+		slice = append(slice, defaultVal)
+		slice = UniqueSlice(slice)
+		return slice, nil
+	}
+}
+
+func UniqueSlice(slice []interface{}) []interface{} {
+	uniqueElements := make(map[interface{}]struct{})
+	var result []interface{}
+	for _, element := range slice {
+		if _, exists := uniqueElements[element]; !exists {
+			uniqueElements[element] = struct{}{}
+			result = append(result, element)
+		}
+	}
+	return result
+}
+
+func (a Ad) GetNextIndexKey(currentKey string) string {
+	switch currentKey {
+	case "":
+		return "Age"
+	case "Age":
+		return "Country"
+	case "Country":
+		return "Platform"
+	case "Platform":
+		return "Gender"
+	default:
+		return ""
+	}
+}
+
 func (a *Ad) BeforeCreate(*gorm.DB) (err error) {
 	if a.ID == uuid.Nil {
 		a.ID = uuid.New()
@@ -48,6 +115,21 @@ type GetAdRequest struct {
 
 	Offset int `form:"offset,default=0" binding:"min=0"`
 	Limit  int `form:"limit,default=10" binding:"min=1,max=100"`
+}
+
+func (r *GetAdRequest) GetValueByKey(key string) (interface{}, error) {
+	v := reflect.ValueOf(*r)
+	fieldVal := v.FieldByName(key)
+
+	if !fieldVal.IsValid() {
+		return nil, fmt.Errorf("no such field: %s in obj", key)
+	}
+
+	if !fieldVal.CanInterface() {
+		return nil, fmt.Errorf("cannot access unexported field: %s", key)
+	}
+
+	return fieldVal.Interface(), nil
 }
 
 type GetAdsPageResponse struct {

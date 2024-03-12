@@ -117,8 +117,8 @@ func TestGetAds(t *testing.T) {
 
 	ads, total, err := store.GetAds(request)
 	assert.Nil(t, err)
-	assert.Equal(t, total, 1)
-	assert.Equal(t, ads[0].ID, ad.ID)
+	assert.Equal(t, 1, total)
+	assert.Equal(t, ad.ID, ads[0].ID)
 	assert.Len(t, ads, total)
 }
 
@@ -138,8 +138,9 @@ func TestGetNoAds(t *testing.T) {
 		Limit:    10,
 	}
 
-	_, _, err = store.GetAds(request)
-	assert.NotNil(t, err)
+	_, count, err := store.GetAds(request)
+	assert.Nil(t, err)
+	assert.Equal(t, 0, count)
 }
 
 func TestCreateBatchAds(t *testing.T) {
@@ -278,34 +279,5 @@ func TestReadAdsPerformanceAndAccuracy(t *testing.T) {
 func BenchmarkReadAds(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		TestReadAdsPerformanceAndAccuracy(&testing.T{})
-	}
-}
-
-func TestInMemoryStoreImpl_DeleteAd(t *testing.T) {
-	type fields struct {
-		ads     map[string]*model.Ad
-		adIndex AdIndex
-	}
-	type args struct {
-		adID string
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &InMemoryStoreImpl{
-				ads:     tt.fields.ads,
-				adIndex: tt.fields.adIndex,
-			}
-			if err := s.DeleteAd(tt.args.adID); (err != nil) != tt.wantErr {
-				t.Errorf("InMemoryStoreImpl.DeleteAd() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
 	}
 }
