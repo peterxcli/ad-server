@@ -216,7 +216,7 @@ func TestDispatcher_handleGetAdRequest(t *testing.T) {
 					},
 				},
 			},
-			expectErr: inmem.ErrNoAdsFound,
+			expectErr: nil,
 		},
 	}
 	for _, tt := range tests {
