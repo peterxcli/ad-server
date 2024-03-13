@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/go-faker/faker/v4"
 	"github.com/google/uuid"
 )
 
@@ -15,9 +14,6 @@ var (
 	genders   = []string{"M", "F"}
 	countries = []string{
 		"US", "TW", "GB", "AU", "FR", "DE",
-		"JP", "IN", "BR", "ZA", "CN", "RU",
-		"ES", "IT", "SE", "NO", "NL", "DK",
-		"MX", "AR", "PL", "BE", "FI", "NZ",
 	}
 	platforms = []string{"web", "ios", "android"}
 )
@@ -75,8 +71,8 @@ func NewMockAd() *model.Ad {
 
 	return &model.Ad{
 		ID:       uuid.New(),
-		Title:    faker.Sentence(),
-		Content:  faker.Paragraph(),
+		Title:    "",
+		Content:  "",
 		StartAt:  model.CustomTime(time.Now().Add(startOffset)),
 		EndAt:    model.CustomTime(time.Now().Add(endOffset)),
 		AgeStart: uint8(ageStart),
