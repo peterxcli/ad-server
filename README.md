@@ -1,5 +1,10 @@
 # Dcard Backend Intern Homework 2024
 
+## Result
+
+1. QPS: 22000/s [K6 Load Test](#k6-load-test)
+   - the bottleneck is at the `gin` router, If the router engine has unlimited QPS, the QPS would be up to 800000/s - [gin performance](https://github.com/gin-gonic/gin?tab=readme-ov-file#benchmarks)
+
 ## Overview
 
 When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or `docker compose --scale`. However, write operations are still limited by the speed of `max(redis, postgres)`. In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
@@ -95,9 +100,9 @@ type Ad struct {
 ![alt text](./img/biogo-interval-inmem.png)
 3. Just iterate all the advertisement and filter the result by the condition
 ![alt text](./img/iterate-inmem.png)
-4. compound index with nested map - 1000000 RPS
+4. compound index with nested map - 1000000 QPS
 ![alt text](./img/compound-index-nested-map.png)
-1. compound index generalization (provide the easy-to-use index API function and the index priority, tree structure) - 800000 RPS
+1. compound index generalization (provide the easy-to-use index API function and the index priority, tree structure) - 800000 QPS
   ![alt text](./img/compound-index-tree.png)
   provide a flexible API for the developer to define the index, but the performance reduce about 10%, move some coding complexity to time & space complexity
 
@@ -126,6 +131,15 @@ type Ad struct {
 - [sqlmock](https://github.com/DATA-DOG/go-sqlmock)
 
 ### K6 Load Test
+
+```bash
+make install-k6
+cp .env.example dev.env
+make run-release # run the server
+make k6 # run on another terminal
+```
+
+![alt text](./img/loadtest.png)
 
 ## Misc
 
