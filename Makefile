@@ -73,3 +73,6 @@ k6: ## Run the k6 tests
 
 inject: ## Inject the data
 	./script/run.sh dev inject
+
+run-release: ## Run the application in release mode
+	./script/run.sh dev run-release
