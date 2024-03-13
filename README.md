@@ -159,7 +159,7 @@ make k6 # run on another terminal
 
 <!-- 1. 可以用 postgres CDC 來同步變動到 queue 裡面來達到更好的資料一致性, 但這只是一個 POC, 所以暫時沒有實作 -->
 
-## Reference
+<!-- ## Reference
 
-- [sorted set](https://stackoverflow.com/a/32080338)
+- [sorted set](https://stackoverflow.com/a/32080338) -->
 <!-- - [pglogical(pg cdc full row)](https://github.com/2ndQuadrant/pglogical) -->
