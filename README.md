@@ -2,7 +2,7 @@
 
 ## Result
 
-1. QPS: 22000/s [K6 Load Test](#k6-load-test)
+1. QPS: 96000/s [K6 Load Test](#k6-load-test)
    - the bottleneck is at the `gin` router, If the router engine has unlimited QPS, the QPS would be up to 800000/s - [gin performance](https://github.com/gin-gonic/gin?tab=readme-ov-file#benchmarks)
 
 ## Overview
@@ -134,7 +134,9 @@ type Ad struct {
 
 ```bash
 make install-k6
-cp .env.example dev.env
+cp .env.example env.dev
+make dev-up
+make dev-migrate
 make run-release # run the server
 make k6 # run on another terminal
 ```
