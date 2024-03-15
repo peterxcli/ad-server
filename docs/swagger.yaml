@@ -14,7 +14,7 @@ definitions:
       created_at:
         type: string
       end_at:
-        example: "2006-01-02 15:04:05"
+        example: 2006-01-02 15:04:05 +0800 CST
         format: date
         type: string
       gender:
@@ -28,7 +28,7 @@ definitions:
           type: string
         type: array
       start_at:
-        example: "2006-01-02 15:04:05"
+        example: 2006-01-02 15:04:05 +0800 CST
         format: date
         type: string
       title:
@@ -45,17 +45,18 @@ definitions:
         type: integer
       age_start:
         example: 18
+        maximum: 100
         type: integer
       content:
         type: string
       country:
         example:
-        - US
+        - TW
         items:
           type: string
         type: array
       end_at:
-        example: "2006-01-02 15:04:05"
+        example: 2006-01-02 15:04:05 +0800 CST
         format: date
         type: string
       gender:
@@ -71,14 +72,15 @@ definitions:
           type: string
         type: array
       start_at:
-        example: "2006-01-02 15:04:05"
+        example: 2006-01-02 15:04:05 +0800 CST
         format: date
         type: string
       title:
+        maxLength: 100
+        minLength: 5
         type: string
     required:
     - age_end
-    - age_start
     - content
     - country
     - end_at

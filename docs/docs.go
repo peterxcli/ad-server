@@ -158,7 +158,7 @@ const docTemplate = `{
                 "end_at": {
                     "type": "string",
                     "format": "date",
-                    "example": "2006-01-02 15:04:05"
+                    "example": "2006-01-02 15:04:05 +0800 CST"
                 },
                 "gender": {
                     "type": "array",
@@ -178,7 +178,7 @@ const docTemplate = `{
                 "start_at": {
                     "type": "string",
                     "format": "date",
-                    "example": "2006-01-02 15:04:05"
+                    "example": "2006-01-02 15:04:05 +0800 CST"
                 },
                 "title": {
                     "type": "string"
@@ -193,7 +193,6 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "age_end",
-                "age_start",
                 "content",
                 "country",
                 "end_at",
@@ -209,6 +208,7 @@ const docTemplate = `{
                 },
                 "age_start": {
                     "type": "integer",
+                    "maximum": 100,
                     "example": 18
                 },
                 "content": {
@@ -220,13 +220,13 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "US"
+                        "TW"
                     ]
                 },
                 "end_at": {
                     "type": "string",
                     "format": "date",
-                    "example": "2006-01-02 15:04:05"
+                    "example": "2006-01-02 15:04:05 +0800 CST"
                 },
                 "gender": {
                     "type": "array",
@@ -249,10 +249,12 @@ const docTemplate = `{
                 "start_at": {
                     "type": "string",
                     "format": "date",
-                    "example": "2006-01-02 15:04:05"
+                    "example": "2006-01-02 15:04:05 +0800 CST"
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 5
                 }
             }
         },
