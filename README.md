@@ -1,5 +1,34 @@
 # Dcard Backend Intern Homework 2024
 
+<!--ts-->
+- [Dcard Backend Intern Homework 2024](#dcard-backend-intern-homework-2024)
+  - [Result](#result)
+  - [Overview](#overview)
+    - [Components](#components)
+      - [Business State Machine (Service State, Reply Cache)](#business-state-machine-service-state-reply-cache)
+      - [Replicated Logs (Ordering, Log Management)](#replicated-logs-ordering-log-management)
+      - [Snapshot \& Recovery (Catch-up, Failure Detection)](#snapshot--recovery-catch-up-failure-detection)
+      - [Remove Outdated Data from memory](#remove-outdated-data-from-memory)
+  - [Implement Practice](#implement-practice)
+    - [Persistence Layer - PostgreSQL](#persistence-layer---postgresql)
+    - [Log Layer - Redis Stream](#log-layer---redis-stream)
+    - [In-Memory Database (Local State Machine)](#in-memory-database-local-state-machine)
+      - [Benchmark](#benchmark)
+    - [Fault Recovery](#fault-recovery)
+    - [Sanitize the Stale Data](#sanitize-the-stale-data)
+  - [Testing](#testing)
+    - [Unit Test](#unit-test)
+    - [K6 Load Test](#k6-load-test)
+  - [Misc](#misc)
+    - [Test Coverage](#test-coverage)
+    - [Swagger API Document](#swagger-api-document)
+    - [Code Statistic](#code-statistic)
+
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: lixucheng, at: Fri Mar 15 23:54:11 CST 2024 -->
+
+<!--te-->
+
 ## Result
 
 1. QPS: 96000/s [K6 Load Test](#k6-load-test)
