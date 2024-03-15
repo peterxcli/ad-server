@@ -20,8 +20,8 @@ type Ad struct {
 	ID       uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
 	Title    string         `gorm:"type:text" json:"title"`
 	Content  string         `gorm:"type:text" json:"content"`
-	StartAt  CustomTime     `gorm:"type:timestamp" json:"start_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	EndAt    CustomTime     `gorm:"type:timestamp" json:"end_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	StartAt  CustomTime     `gorm:"type:timestamptz" json:"start_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05 +0800 CST"`
+	EndAt    CustomTime     `gorm:"type:timestamptz" json:"end_at" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05 +0800 CST"`
 	AgeStart uint8          `gorm:"type:integer" json:"age_start"`
 	AgeEnd   uint8          `gorm:"type:integer" json:"age_end"`
 	Gender   pq.StringArray `gorm:"type:text[]" json:"gender"`
@@ -30,7 +30,7 @@ type Ad struct {
 	// Version, cant use sequence number, because the version is not continuous if we want to support update and delete
 	Version   int        `gorm:"index" json:"version"`
 	IsActive  bool       `gorm:"type:boolean; default:true" json:"-" default:"true"`
-	CreatedAt CustomTime `gorm:"type:timestamp" json:"created_at"`
+	CreatedAt CustomTime `gorm:"type:timestamptz" json:"created_at"`
 }
 
 // GetValueByKey returns the value of the field with the given key.
@@ -160,8 +160,8 @@ func (AsynqDeletePayload) TypeName() string {
 type CreateAdRequest struct {
 	Title    string     `json:"title" binding:"required,min=5,max=100"`
 	Content  string     `json:"content" binding:"required"`
-	StartAt  CustomTime `json:"start_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
-	EndAt    CustomTime `json:"end_at" binding:"required,gtfield=StartAt" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05"`
+	StartAt  CustomTime `json:"start_at" binding:"required" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05 +0800 CST"`
+	EndAt    CustomTime `json:"end_at" binding:"required,gtfield=StartAt" swaggertype:"string" format:"date" example:"2006-01-02 15:04:05 +0800 CST"`
 	AgeStart uint8      `json:"age_start" binding:"gtefield=AgeStart,lte=100" example:"18"`
 	AgeEnd   uint8      `json:"age_end" binding:"required" example:"65"`
 	Gender   []string   `json:"gender" binding:"required,dive,oneof=M F" example:"F"`

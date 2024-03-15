@@ -13,10 +13,10 @@ func (ct CustomTime) T() time.Time {
 	return time.Time(ct)
 }
 
-const ctLayout = "2006-01-02 15:04:05"
+const ctLayout = "2006-01-02 15:04:05 -0700 MST"
 
 func (ct CustomTime) MarshalJSON() ([]byte, error) {
-	t := time.Time(ct)
+	t := ct.T()
 	if t.IsZero() {
 		return []byte("null"), nil
 	}

@@ -399,8 +399,7 @@ func (a *AdService) registerAdDeleteTask(ad *model.Ad) error {
 		return err
 	}
 	taskID := fmt.Sprintf("%s-%s", payload.TypeName(), ad.ID.String())
-	processTime := ad.EndAt.T().In(time.Local)
-	// FIXME: the timezone is not correct, the scheduled time in the asynq UI is utc+8, but the internal scheduler is utc+0
+	processTime := ad.EndAt.T()
 	_, err = a.asynqClient.Enqueue(
 		task,
 		asynq.ProcessAt(processTime),
