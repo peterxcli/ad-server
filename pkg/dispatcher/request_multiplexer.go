@@ -5,6 +5,7 @@ import (
 	"dcard-backend-2024/pkg/syncmap"
 	"log"
 	"sync/atomic"
+	"time"
 )
 
 type Dispatcher struct {
@@ -27,25 +28,58 @@ func NewDispatcher(store model.InMemoryStore) *Dispatcher {
 }
 
 func (r *Dispatcher) handleCreateBatchAdRequest(req *CreateBatchAdRequest) {
-	err := r.Store.CreateBatchAds(req.Ads)
+	// err := r.Store.CreateBatchAds(req.Ads)
+	for _, ad := range req.Ads {
+		if time.Now().After(ad.StartAt.T()) {
+			_, err := r.Store.CreateAd(ad)
+			if err != nil {
+				log.Printf("failed to create ad %s: %v", ad.ID, err)
+			}
+		} else {
+			log.Printf("ad %s is scheduled to start at %s", ad.ID, ad.StartAt.T())
+			time.AfterFunc(time.Until(ad.StartAt.T()), func() {
+				_, err := r.Store.CreateAd(ad)
+				if err != nil {
+					log.Printf("failed to create ad %s: %v", ad.ID, err)
+				} else {
+					log.Printf("scheduled ad %s is created", ad.ID)
+				}
+			})
+		}
+	}
 
 	// use sync map to store the response channel
 	if r.ResponseChan.Exists(req.RequestID) {
 		r.ResponseChan.Load(req.RequestID) <- &CreateAdResponse{
 			Response: Response{RequestID: req.RequestID},
-			Err:      err,
+			Err:      nil,
 		}
 	}
 }
 
 func (r *Dispatcher) handleCreateAdRequest(req *CreateAdRequest) {
-	adIDr, err := r.Store.CreateAd(req.Ad)
+	if time.Now().After(req.Ad.StartAt.T()) {
+		_, err := r.Store.CreateAd(req.Ad)
+		if err != nil {
+			log.Printf("failed to create ad %s: %v", req.Ad.ID, err)
+		}
+	} else {
+		log.Printf("ad %s is scheduled to start at %s", req.Ad.ID, req.Ad.StartAt.T())
+		time.AfterFunc(time.Until(req.Ad.StartAt.T()), func() {
+			_, err := r.Store.CreateAd(req.Ad)
+			if err != nil {
+				log.Printf("failed to create ad %s: %v", req.Ad.ID, err)
+			} else {
+				log.Printf("scheduled ad %s is created", req.Ad.ID)
+			}
+		})
+	}
 
 	if r.ResponseChan.Exists(req.RequestID) {
 		r.ResponseChan.Load(req.RequestID) <- &CreateAdResponse{
 			Response: Response{RequestID: req.RequestID},
-			AdID:     adIDr,
-			Err:      err,
+			AdID:     req.Ad.ID.String(),
+			Err:      nil,
 		}
 	}
 }
