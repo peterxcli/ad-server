@@ -19,7 +19,7 @@ let urlString = "http://127.0.0.1:8000/api/v1/ad";
 
 const limits = [5, 10, 15];
 const genders = ['M', 'F'];
-const countries = ['TW', 'JP'];
+const countries = ['US', 'TW', 'GB', 'AU', 'FR', 'DE'];
 const platforms = ['android', 'ios', 'web'];
 
 export default function () {
@@ -28,9 +28,9 @@ export default function () {
 	const gender = randomItem(genders);
 	const country = randomItem(countries);
 	const platform = randomItem(platforms);
-    
+
 	for (let i = 0; i < 10; i++) {
-        // 用 new URL 效能會變差
+		// 用 new URL 效能會變差
 		http.get(
 			`${urlString}?limit=${limit}&offset=${i}&age=${age}&gender=${gender}&country=${country}&platform=${platform}`,
 			{
