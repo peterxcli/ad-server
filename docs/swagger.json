@@ -1,0 +1,293 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "contact": {}
+    },
+    "paths": {
+        "/api/v1/ad": {
+            "get": {
+                "description": "Retrieves an ad by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ad"
+                ],
+                "summary": "Get an ad by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Offset for pagination",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit for pagination",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Age",
+                        "name": "age",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Gender",
+                        "name": "gender",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Country",
+                        "name": "country",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Platform",
+                        "name": "platform",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.GetAdsPageResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.Response"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create an ad",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ad"
+                ],
+                "summary": "Create an ad",
+                "parameters": [
+                    {
+                        "description": "Ad object",
+                        "name": "ad",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.CreateAdRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.CreateAdResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.Response"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dcard-backend-2024_pkg_model.Response"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dcard-backend-2024_pkg_model.Ad": {
+            "type": "object",
+            "properties": {
+                "age_end": {
+                    "type": "integer"
+                },
+                "age_start": {
+                    "type": "integer"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "end_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05 +0800 CST"
+                },
+                "gender": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "start_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05 +0800 CST"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "version": {
+                    "description": "Version, cant use sequence number, because the version is not continuous if we want to support update and delete",
+                    "type": "integer"
+                }
+            }
+        },
+        "dcard-backend-2024_pkg_model.CreateAdRequest": {
+            "type": "object",
+            "required": [
+                "age_end",
+                "content",
+                "country",
+                "end_at",
+                "gender",
+                "platform",
+                "start_at",
+                "title"
+            ],
+            "properties": {
+                "age_end": {
+                    "type": "integer",
+                    "example": 65
+                },
+                "age_start": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "example": 18
+                },
+                "content": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "TW"
+                    ]
+                },
+                "end_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05 +0800 CST"
+                },
+                "gender": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "F"
+                    ]
+                },
+                "platform": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "ios"
+                    ]
+                },
+                "start_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2006-01-02 15:04:05 +0800 CST"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 5
+                }
+            }
+        },
+        "dcard-backend-2024_pkg_model.CreateAdResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Data id of the created ad",
+                    "type": "string"
+                },
+                "msg": {
+                    "type": "string"
+                }
+            }
+        },
+        "dcard-backend-2024_pkg_model.GetAdsPageResponse": {
+            "type": "object",
+            "properties": {
+                "ads": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dcard-backend-2024_pkg_model.Ad"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dcard-backend-2024_pkg_model.Response": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "msg": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
+        }
+    }
+}
