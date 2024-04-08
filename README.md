@@ -18,6 +18,11 @@
       - [Availability](#availability)
     - [In-Memory Database (Local State Machine)](#in-memory-database-local-state-machine)
       - [Current Implementation](#current-implementation)
+        - [Custom LeftMost Prefix Index Rule](#custom-leftmost-prefix-index-rule)
+        - [Concurrent Tree Structure Index](#concurrent-tree-structure-index)
+          - [IndexInternalNode](#indexinternalnode)
+          - [IndexLeafNode](#indexleafnode)
+        - [Tree Structure Interface and Struct](#tree-structure-interface-and-struct)
       - [Implementation Progress](#implementation-progress)
       - [Benchmark](#benchmark)
     - [Fault Recovery](#fault-recovery)
@@ -128,9 +133,103 @@ We can use the redis `sentinel` mode to handle the redis high availability
 
 > After trying so many ways, I think the most robust, simple, and efficient way is to use `sqlite` as [in-memory database](https://www.sqlite.org/inmemorydb.html). The performance is also good, [the SQL read speed would be about 60000/s](https://turriate.com/articles/making-sqlite-faster-in-go), However, the real query may be slower than ideal speed since the query is not simple as the benchmark query. But remember, our design can scale the read operation speed linearly to infinite, so the read speed in a single instance is not the most important thing.
 
-TODO
-
 #### Current Implementation
+
+##### Custom LeftMost Prefix Index Rule
+
+Implement a func call `GetNextIndexKey` to determine the composited index order, the index with greater selectivity should be the leftmost index.
+
+```go
+func (a Ad) GetNextIndexKey(currentKey string) string {
+    switch currentKey {
+    case "":
+        return "Age"
+    case "Age":
+        return "Country"
+    case "Country":
+        return "Platform"
+    case "Platform":
+        return "Gender"
+    default:
+        return ""
+    }
+}
+```
+
+##### Concurrent Tree Structure Index
+
+```mermaid
+graph TD;
+    Root(IndexNode: Root) -->|Country| US([IndexInternalNode: Country=US])
+    Root -->|Country| CA([IndexInternalNode: Country=CA])
+
+    US -->|Age| US_25([IndexLeafNode: Age=25])
+    US -->|Age| US_30([IndexLeafNode: Age=30])
+
+    CA -->|Age| CA_25([IndexLeafNode: Age=25])
+
+    US_25 -->|Ad| Ad_US_25_1([Ad1])
+    US_25 -->|Ad| Ad_US_25_2([Ad2])
+    US_30 -->|Ad| Ad_US_30_1([Ad3])
+    US_30 -->|Ad| Ad_US_30_2([Ad4])
+    US_30 -->|Ad| Ad_US_30_3([Ad5])
+    CA_25 -->|Ad| Ad_CA_25([Ad6])
+```
+
+###### IndexInternalNode
+
+1. AddAd
+   - If the key is not in the children, create a new leaf node and add the ad to the leaf node
+   - If the key is in the children, call the AddAd recursively
+   - If the key is the last key, add the ad to the leaf node
+2. GetAd
+    - If the key is not in the children, return an empty array
+    - If the key is in the children, call the GetAd recursively
+    - If the key is the last key, return the ads in the leaf node
+3. Concurrent Read/Write
+    - Use ConcurrentMap to store the children, If there is a bulk write operation, we can use multiple goroutines to write the children concurrently
+
+###### IndexLeafNode
+
+1. AddAd
+   - Add the ad to the sorted set
+2. GetAd
+    - Use the GetByRankRange to support the offset and limit query
+3. Concurrent Read/Write
+    - Use the `sync.RWMutex` to protect the read and write operation
+
+##### Tree Structure Interface and Struct
+
+```go
+type IndexNode interface {
+    AddAd(ad *model.Ad)
+    GetAd(req *model.GetAdRequest) ([]*model.Ad, error)
+    DeleteAd(ad *model.Ad)
+}
+
+type IndexInternalNode struct {
+    Key      string // The key this node indexes on, e.g., "country", "age"
+    Children cmap.ConcurrentMap[FieldStringer, IndexNode] // The children of this node
+}
+
+func NewIndexInternalNode(key string) IndexNode {
+    return &IndexInternalNode{
+        Key:      key,
+        Children: cmap.NewStringer[FieldStringer, IndexNode](),
+    }
+}
+
+type IndexLeafNode struct {
+    mu  sync.RWMutex
+    Ads *sortedset.SortedSet // map[string]*model.Ad
+}
+
+func NewIndexLeafNode() IndexNode {
+    return &IndexLeafNode{
+        Ads: sortedset.New(),
+    }
+}
+```
 
 #### Implementation Progress
 
