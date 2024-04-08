@@ -94,12 +94,12 @@ type Ad struct {
 
 ### Log Layer - Redis Stream
 
-> no leader, no follower, all instance(replica) are equal
+> No leader, no follower, all instance(replica) are equal
 
-- use `XADD` to append the log (create, update, delete)
-  - the publisher replica did not update its inmemory database at the same time
-- all instance subscribe with `XREAD` to get the log
-- the inmemory database for each replica only update if the replica receive the log from the redis stream
+- Use `XADD` to append the log (create, update, delete)
+  - The publisher replica did not update its inmemory database at the same time
+- All instance subscribe with `XREAD` to get the log
+- The in-memory database for each replica only update if the replica receive the log from the redis stream
 
 ![alt text](./img/redis-insight.png)
 
