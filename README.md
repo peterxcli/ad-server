@@ -107,17 +107,25 @@ type Ad struct {
 
 ### In-Memory Database (Local State Machine)
 
-- multi-read/single-write lock
-- implement the advertisement store by map with id primary key
-- implement the advertisement indexing by map[string]mapset.Set[string]
-  - By the way, originally I was using `map[string]map[string]*model.Ad`, and the concurrent read speed was only 4000 QPS. After changing it to `map[string]mapset.Set[string]`, the concurrent read speed increased to over 10000 QPS!!!
-  - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
-  - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
-  - upd: I have tried to implement the multi-indexing, the write performance is down, but the read performance is now 1166960 QPS, so I think it's worth it - [commit detail](https://github.com/peterxcli/dcard-backend-2024/commit/028f68a2b1e770aac0754331826fd3110aa0b977)
-  - define the multi-indexing with priority, and use reflect to generate the index function(tree structure), and use concurrent map to store the index, we would add the index concurrently, the result read performance become 800000 QPS
-- ~~implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree~~
-  - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
-  - Currently, I just iterate all the advertisement and filter the result by the condition
+> After trying so many ways, I think the most robust, simple, and efficient way is to use `sqlite` as [in-memory database](https://www.sqlite.org/inmemorydb.html). The performance is also good, [the SQL read speed would be about 60000/s](https://turriate.com/articles/making-sqlite-faster-in-go), However, the real query may be slower than ideal speed since the query is not simple as the benchmark query. But remember, our design can scale the read operation speed linearly to infinite, so the read speed in a single instance is not the most important thing.
+
+TODO
+
+#### Current Implementation
+
+#### Implementation Progress
+
+1. Multi-read/single-write lock (v1.0 deprecated)
+2. Implement the advertisement store by map with id primary key (v2.0 deprecated)
+3. Implement the advertisement indexing by map[string]mapset.Set[string]
+   - By the way, originally I was using `map[string]map[string]*model.Ad`, and the concurrent read speed was only 4000 QPS. After changing it to `map[string]mapset.Set[string]`, the concurrent read speed increased to over 10000 QPS!!!
+   - upd: I leverage the characteristic of `Pointer is Comparable` in Golang, then the performance become: write: 407676.68 QPS / read: 22486.06 QPS
+   - I'm considering implementing multi-indexing to improve the read performance, not yet implemented currently
+   - upd: I have tried to implement the multi-indexing, the write performance is down, but the read performance is now 1166960 QPS, so I think it's worth it - [commit detail](https://github.com/peterxcli/ad-server/commit/028f68a2b1e770aac0754331826fd3110aa0b977)
+   - define the multi-indexing with priority, and use reflect to generate the index function(tree structure), and use concurrent map to store the index, we would add the index concurrently, the result read performance become 800000 QPS
+4. Implement the advertisement range query(ageStart, ageEnd, StartTime, EndTime) by interval tree (v4.0 deprecated)
+   - I have tried some interval tree library, but the read performance is not good, so I give up this implementation
+   - Currently, I just iterate all the advertisement and filter the result by the condition
 
 #### Benchmark
 
