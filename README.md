@@ -29,6 +29,11 @@
     - [Sanitize the Stale Data](#sanitize-the-stale-data)
   - [Testing](#testing)
     - [Unit Test](#unit-test)
+      - [Controller](#controller)
+      - [Service](#service)
+      - [Dispatcher](#dispatcher)
+      - [In-Memory Database](#in-memory-database)
+    - [Tools](#tools)
     - [K6 Load Test](#k6-load-test)
       - [K6 Load Test Result](#k6-load-test-result)
   - [Misc](#misc)
@@ -281,6 +286,31 @@ func NewIndexLeafNode() IndexNode {
 ## Testing
 
 ### Unit Test
+
+- [test coverage](#test-coverage)
+
+#### Controller
+
+- gin test mode
+- `httptest` to test the controller
+- `gin.CreateTestContext` to create the test context
+
+#### Service
+
+- Data Validation
+- Check Mock expectation
+- Shutdown the background goroutine and dependencies correctly
+
+#### Dispatcher
+
+- Test if the dispatcher goroutine can multiplex the request to the correct handler
+
+#### In-Memory Database
+
+- Test the data can be added, updated, and deleted correctly
+- Benchmark the read and write performance
+
+### Tools
 
 - gotests auto generate test functions
 - [redis mock](https://github.com/go-redis/redismock/v9)
