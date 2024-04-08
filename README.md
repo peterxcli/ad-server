@@ -5,6 +5,8 @@
   - [Benchmark Result](#benchmark-result)
   - [Short Description](#short-description)
   - [Overview](#overview)
+    - [Replicated Business State Machine](#replicated-business-state-machine)
+    - [A good diagram that maps the components in my system design idea](#a-good-diagram-that-maps-the-components-in-my-system-design-idea)
     - [Components](#components)
       - [Business State Machine (Service State, Reply Cache)](#business-state-machine-service-state-reply-cache)
       - [Replicated Logs (Ordering, Log Management)](#replicated-logs-ordering-log-management)
@@ -14,6 +16,8 @@
     - [Persistence Layer - PostgreSQL](#persistence-layer---postgresql)
     - [Log Layer - Redis Stream](#log-layer---redis-stream)
     - [In-Memory Database (Local State Machine)](#in-memory-database-local-state-machine)
+      - [Current Implementation](#current-implementation)
+      - [Implementation Progress](#implementation-progress)
       - [Benchmark](#benchmark)
     - [Fault Recovery](#fault-recovery)
     - [Sanitize the Stale Data](#sanitize-the-stale-data)
@@ -42,9 +46,13 @@ A **infinite scalable** advertisement management system, baked with replicated a
 
 ## Overview
 
-When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or `docker compose --scale`. However, write operations are still limited by the speed of `max(redis, postgres)`. In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
+When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or [`docker compose --scale`](https://docs.docker.com/reference/cli/docker/compose/up/#options). However, write operations are still limited by the speed of `max(redis, postgres)`, however, we can choose NOSQL database to achieve the higher write speed, and use Kafka to handle the log ordering and log replication as redis stream alternative[(better consistency and durability)](https://www.instaclustr.com/blog/redis-streams-vs-apache-kafka/). In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
+
+### Replicated Business State Machine
 
 ![alt text](./img/overview.png)
+
+### A good diagram that maps the components in my system design idea
 
 ![alt text](./img/rsm.png)
 
