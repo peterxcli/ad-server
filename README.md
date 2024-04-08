@@ -59,7 +59,7 @@ A **infinite scalable** advertisement management system, baked with replicated a
 
 ## Overview
 
-When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or [`docker compose --scale`](https://docs.docker.com/reference/cli/docker/compose/up/#options). However, write operations are still limited by the speed of `max(redis, postgres)`, however, we can choose NOSQL database to achieve the higher write speed, and use Kafka to handle the log ordering and log replication as redis stream alternative[(better consistency and durability)](https://www.instaclustr.com/blog/redis-streams-vs-apache-kafka/). In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
+When I saw the requirements for this topic, I was wondering if a QPS (Queries Per Second) > 10,000 could be solved simply using a single Redis instance. So, I started thinking about this problem and came up with a more interesting solution. This solution involves using an in-memory database to address the issue, along with a Redis stream for handling log ordering, and PostgreSQL for persistence. As it's a local in-memory database, the read operations can be infinitely scaled using solutions like Kubernetes Deployment or [`docker compose --scale`](https://docs.docker.com/reference/cli/docker/compose/up/#options). However, write operations are still limited by the speed of `max(redis, postgres)`, however, we can choose NoSQL database to achieve the higher write speed, and use Kafka to handle the log ordering and log replication as redis stream alternative[(better consistency and durability)](https://www.instaclustr.com/blog/redis-streams-vs-apache-kafka/). In my implementation, I've made every effort to ensure the system is fault-tolerant and consistent. If anyone notices any cases I haven't considered or areas that could be optimized, please feel free to point them out. Thank you!
 
 ### Replicated Business State Machine
 
@@ -158,7 +158,7 @@ type Ad struct {
 > No leader, no follower, all instance(replica) are equal
 
 - Use `XADD` to append the log (create, update, delete)
-  - The publisher replica did not update its inmemory database at the same time
+  - The publisher replica did not update its in-memory database at the same time
 - All instance subscribe with `XREAD` to get the log
 - The in-memory database for each replica only update if the replica receive the log from the redis stream
 
@@ -347,7 +347,7 @@ func NewIndexLeafNode() IndexNode {
 
 ### Tools
 
-- gotests auto generate test functions
+- `gotests` to auto generate test functions
 - [redis mock](https://github.com/go-redis/redismock/v9)
 - [sqlmock](https://github.com/DATA-DOG/go-sqlmock)
 
