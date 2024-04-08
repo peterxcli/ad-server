@@ -15,6 +15,7 @@
   - [Implementation Practice](#implementation-practice)
     - [Persistence Layer - PostgreSQL](#persistence-layer---postgresql)
     - [Log Layer - Redis Stream](#log-layer---redis-stream)
+      - [Availability](#availability)
     - [In-Memory Database (Local State Machine)](#in-memory-database-local-state-machine)
       - [Current Implementation](#current-implementation)
       - [Implementation Progress](#implementation-progress)
@@ -118,6 +119,10 @@ type Ad struct {
 ![alt text](./img/redis-insight.png)
 
 > the request id is for recognizing which client should return the response to.
+
+#### Availability
+
+We can use the redis `sentinel` mode to handle the redis high availability
 
 ### In-Memory Database (Local State Machine)
 
