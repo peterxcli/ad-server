@@ -7,6 +7,7 @@
   - [Overview](#overview)
     - [Replicated Business State Machine](#replicated-business-state-machine)
     - [A good diagram that maps the components in my system design idea](#a-good-diagram-that-maps-the-components-in-my-system-design-idea)
+    - [The diagram of the system design idea](#the-diagram-of-the-system-design-idea)
     - [Components](#components)
       - [Business State Machine (Service State, Reply Cache)](#business-state-machine-service-state-reply-cache)
       - [Replicated Logs (Ordering, Log Management)](#replicated-logs-ordering-log-management)
@@ -69,6 +70,37 @@ When I saw the requirements for this topic, I was wondering if a QPS (Queries Pe
 ![alt text](./img/rsm.png)
 
 The main components in my system design idea have five parts, which can correspond to the `Servers` in the above figure respectively.
+
+### The diagram of the system design idea
+
+```mermaid
+flowchart TD
+    Request[R/W Request] -->|Load Balance| Instances[Dispatcher]
+
+    subgraph Instances["Instances"]
+        subgraph Instance1["API Instance 1"]
+            SM1[State Machine]
+            D1[Dispatcher] -.-> SM1
+        end
+
+        subgraph Instance2["API Instance 2"]
+            SM2[State Machine]
+            D2[Dispatcher] -.-> SM2
+        end
+
+        subgraph Instance3["API Instance 3"]
+            SM3[State Machine]
+            D3[Dispatcher] -.-> SM3
+        end
+    end
+
+    RedisStream[("Redis Stream")] -.->|Subscribe Log| Instances
+    PG[(Postgres)] -.->|Update Log| RedisStream
+
+    Instance1 -.->|Write/Delete Log| PG
+    Instance2 -.->|Write/Delete Log| PG
+    Instance3 -.->|Write/Delete Log| PG
+```
 
 ### Components
 
