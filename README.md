@@ -94,8 +94,11 @@ flowchart TD
         end
     end
 
-    RedisStream[("Redis Stream")] -.->|Subscribe Log| Instances
+    Scheduler["Asynq Scheduler"] -.->|Delete\nLog| Instances
+    Instances -.->|Schedule Delete\nat Ad End Time| Scheduler
+    Scheduler <-.->|Redis Baked| RedisStream
     PG[(Postgres)] -.->|Update Log| RedisStream
+    RedisStream[("Redis Stream")] -.->|Subscribe Log| Instances
 
     Instance1 -.->|Write/Delete Log| PG
     Instance2 -.->|Write/Delete Log| PG
