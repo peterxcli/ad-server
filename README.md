@@ -2,14 +2,14 @@
 
 <!--ts-->
 - [Dcard Backend Intern Homework 2024](#dcard-backend-intern-homework-2024)
-  - [Result](#result)
+  - [Benchmark Result](#benchmark-result)
   - [Overview](#overview)
     - [Components](#components)
       - [Business State Machine (Service State, Reply Cache)](#business-state-machine-service-state-reply-cache)
       - [Replicated Logs (Ordering, Log Management)](#replicated-logs-ordering-log-management)
       - [Snapshot \& Recovery (Catch-up, Failure Detection)](#snapshot--recovery-catch-up-failure-detection)
       - [Remove Outdated Data from memory](#remove-outdated-data-from-memory)
-  - [Implement Practice](#implement-practice)
+  - [Implementation Practice](#implementation-practice)
     - [Persistence Layer - PostgreSQL](#persistence-layer---postgresql)
     - [Log Layer - Redis Stream](#log-layer---redis-stream)
     - [In-Memory Database (Local State Machine)](#in-memory-database-local-state-machine)
@@ -62,13 +62,13 @@ The state machine can be recovered from the snapshot, and the snapshot only modi
 
 #### Remove Outdated Data from memory
 
-Since we didnt use the interval tree to handle the range query, we need to remove the outdated data from the in-memory database, so we need to use some `scheduler` to remove the outdated data from the in-memory database.
+Since we didn't use the interval tree to handle the range query, we need to remove the outdated data from the in-memory database, so we need to use some `scheduler` to remove the outdated data from the in-memory database.
 
 I choose the [`asynq`](https://github.com/hibiken/asynq) to act as the scheduler
 
 > after multiple worker race for handling the delete task, the delete log would be also published to the redis stream, so the state machine can also handle the delete operation, this method also prevent the `Restore` operation from reading and serving stale data.
 
-## Implement Practice
+## Implementation Practice
 
 ### Persistence Layer - PostgreSQL
 
