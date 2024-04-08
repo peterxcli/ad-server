@@ -30,6 +30,7 @@
   - [Testing](#testing)
     - [Unit Test](#unit-test)
     - [K6 Load Test](#k6-load-test)
+      - [K6 Load Test Result](#k6-load-test-result)
   - [Misc](#misc)
     - [Test Coverage](#test-coverage)
     - [Swagger API Document](#swagger-api-document)
@@ -287,14 +288,23 @@ func NewIndexLeafNode() IndexNode {
 
 ### K6 Load Test
 
+> Currently, the load test is only performed on the local machine, for a more accurate result, the load test should be performed distributedly, We can adopt the [`k6 operator`](https://grafana.com/docs/k6/latest/testing-guides/running-distributed-tests/) to run the distributed load test in the kubernetes cluster, and the result should be analyzed by the `Prometheus` and `Grafana`
+
+1. Inject random data to the database
+2. Run the server, the server would read the data from the database as snapshot and store it in the in-memory database
+3. Start the k6 load test
+
 ```bash
 make install-k6
 cp .env.example env.dev
 make dev-up
 make dev-migrate
+make inject # inject the test data
 make run-release # run the server
 make k6 # run on another terminal
 ```
+
+#### K6 Load Test Result
 
 ![alt text](./img/loadtest.png)
 
