@@ -58,7 +58,7 @@
 
 - Local: QPS: `96000/s`
   - [K6 Load Test](#k6-load-test)
-  - The bottleneck is at the `gin` router, If the router engine has unlimited QPS, the QPS would be up to 800000/s - [gin performance](https://github.com/gin-gonic/gin?tab=readme-ov-file#benchmarks)
+  - The bottleneck is at the `gin` router, If the router engine has unlimited QPS, the QPS would be up to `800000/s` - [gin performance](https://github.com/gin-gonic/gin?tab=readme-ov-file#benchmarks)
 
 ## Short Description
 
