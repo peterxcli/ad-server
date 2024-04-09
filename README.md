@@ -28,6 +28,13 @@
       - [Benchmark](#benchmark)
     - [Fault Recovery](#fault-recovery)
     - [Sanitize the Stale Data](#sanitize-the-stale-data)
+  - [Fields and Validation Criteria](#fields-and-validation-criteria)
+    - [`Age` (uint8)](#age-uint8)
+    - [`Country` (string)](#country-string)
+    - [`Gender` (string)](#gender-string)
+    - [`Platform` (string)](#platform-string)
+    - [`Offset` (int)](#offset-int)
+    - [`Limit` (int)](#limit-int)
   - [Testing](#testing)
     - [Unit Test](#unit-test)
       - [Controller](#controller)
@@ -317,6 +324,61 @@ func NewIndexLeafNode() IndexNode {
 ![alt text](./img/asynq-ui.png)
 
 - after the time display in the `process in` column, the advertisement deleted operation would consider as a log which is persisted in the redis stream, so the state machine can also handle the delete operation, this method also prevent the `Restore` operation from reading and serving stale data.
+
+## Fields and Validation Criteria
+
+```go
+type GetAdRequest struct {
+    Age      uint8  `form:"age" binding:"omitempty,gt=0"`
+    Country  string `form:"country" binding:"omitempty,iso3166_1_alpha2"`
+    Gender   string `form:"gender" binding:"omitempty,oneof=M F"`
+    Platform string `form:"platform" binding:"omitempty,oneof=android ios web"`
+    Offset int `form:"offset,default=0" binding:"min=0"`
+    Limit  int `form:"limit,default=10" binding:"min=1,max=100"`
+}
+```
+
+### `Age` (uint8)
+
+- **Data Source**: Extracted from the `age` query parameter.
+- **Validation**:
+  - `omitempty`: The age field is optional. Validation rules apply only if the field is provided.
+  - `gt=0`: If present, age must be greater than 0. This rule ensures that the age value, if specified, is a positive integer.
+
+### `Country` (string)
+
+- **Data Source**: Extracted from the `country` query parameter.
+- **Validation**:
+  - `omitempty`: The country field is optional. Validation rules apply only if the field is provided.
+  - `iso3166_1_alpha2`: If present, the country code must conform to the ISO 3166-1 alpha-2 standard, which consists of two-letter country codes (e.g., US for the United States, CA for Canada).
+
+### `Gender` (string)
+
+- **Data Source**: Extracted from the `gender` query parameter.
+- **Validation**:
+  - `omitempty`: The gender field is optional. Validation rules apply only if the field is provided.
+  - `oneof=M F`: If present, gender must be either "M" (Male) or "F" (Female). This restriction ensures that the gender field, if specified, adheres to the predefined options.
+
+### `Platform` (string)
+
+- **Data Source**: Extracted from the `platform` query parameter.
+- **Validation**:
+  - `omitempty`: The platform field is optional. Validation rules apply only if the field is provided.
+  - `oneof=android ios web`: If present, platform must be one of the following values: "android", "ios", or "web". This rule ensures that the platform, if specified, matches one of the supported types.
+
+### `Offset` (int)
+
+- **Data Source**: Extracted from the `offset` query parameter.
+- **Validation**:
+  - `default=0`: If the offset field is not provided, it defaults to 0. This behavior is useful for pagination, indicating the starting point of the dataset to be returned.
+  - `min=0`: The offset, if specified or defaulted, must be a non-negative integer. This rule ensures that the offset value is valid for use in pagination calculations.
+
+### `Limit` (int)
+
+- **Data Source**: Extracted from the `limit` query parameter.
+- **Validation**:
+  - `default=10`: If the limit field is not provided, it defaults to 10. This default value controls the maximum number of items to be returned in a single request, useful for pagination.
+  - `min=1,max=100`: The limit, if specified, must be between 1 and 100, inclusive. This range ensures that a reasonable number of items are returned, preventing overly large or empty responses.
 
 ## Testing
 
